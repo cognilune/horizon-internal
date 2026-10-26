@@ -45,25 +45,30 @@ export function GlobalSearch({
   onClose: () => void;
   onSelect: (resource: string, id: string) => void;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null),
+  const input = useRef<HTMLInputElement>(null),
     [q, setQ] = useState("");
   const { rows, busy, error } = useSearch(q);
   useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
+    input.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
   return (
-    <dialog
-      ref={dialog}
-      className="search-dialog"
-      onCancel={onClose}
-      onClick={(e) => {
-        if (e.target === dialog.current) onClose();
+    <div
+      className="search-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
       }}
     >
+    <section className="search-dialog" role="dialog" aria-modal="true" aria-label="Search Horizon">
       <div className="search-dialog-input">
         <Icon name="search" />
         <input
-          autoFocus
+          ref={input}
           aria-label="Search all users, workspaces and projects"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -114,7 +119,8 @@ export function GlobalSearch({
         <kbd>esc</kbd> to close{" "}
         <span>All platform records · Administrator access</span>
       </div>
-    </dialog>
+    </section>
+    </div>
   );
 }
 export function EntityPicker({

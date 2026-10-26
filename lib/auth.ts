@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import {
   createHash,
+  randomBytes,
   randomUUID,
   scrypt as rawScrypt,
   timingSafeEqual,
@@ -10,6 +11,13 @@ import { getDb, PublicError } from "./db";
 import { authorizeSession, type Session } from "./session";
 export const COOKIE = "horizon_internal_session";
 const scrypt = promisify(rawScrypt);
+export async function hashPassword(password: string) {
+  if (password.length < 12 || password.length > 128)
+    throw new PublicError("Password must contain between 12 and 128 characters.", 422);
+  const salt = randomBytes(16);
+  const derived = (await scrypt(password, salt, 64)) as Buffer;
+  return `scrypt$${salt.toString("base64url")}$${derived.toString("base64url")}`;
+}
 export async function requireAdmin(): Promise<Session> {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
