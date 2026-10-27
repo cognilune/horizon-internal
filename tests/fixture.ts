@@ -19,8 +19,6 @@ export async function fixture() {
  CREATE TABLE customer_chat_messages(id text,project_id text,conversation_id text);
  CREATE TABLE ai_projects(id text,owner_user_id text,workspace_id text,site_id text,name text,created_at timestamptz,updated_at timestamptz,deleted_at timestamptz);
  CREATE TABLE sites(id text,status text);
- CREATE TABLE ai_deployments(id text,project_id text,status text,url text,completed_at timestamptz);
- CREATE TABLE customer_workspace_domains(project_id text,hostname text,status text,ssl_status text,published_at timestamptz);
  CREATE TABLE customer_workspace_invites(id text,workspace_id text,invited_by text,email text,role text,status text,created_at timestamptz,accepted_at timestamptz,expires_at timestamptz);
  CREATE TABLE customer_workspace_invitations(id text,owner_user_id text,invited_by text,email text,role text,status text,created_at timestamptz,accepted_at timestamptz,expires_at timestamptz);
  CREATE TABLE customer_workspace_access(id text,workspace_id text,user_id text,role text,joined_at timestamptz,monthly_credit_limit numeric);

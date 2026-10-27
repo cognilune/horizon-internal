@@ -19,20 +19,13 @@ export default function DetailDrawer({
   const dialog = useRef<HTMLDialogElement>(null),
     [record, setRecord] = useState<DataRow | null>(null),
     [error, setError] = useState(""),
-    [tab, setTab] = useState("profile"),
-    [statusAction, setStatusAction] = useState<
-      "block" | "unblock" | "activate" | "deactivate" | "delete" | "restore" | null
-    >(null),
-    [statusBusy, setStatusBusy] = useState(false),
-    [statusError, setStatusError] = useState("");
+    [tab, setTab] = useState("profile");
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
   useEffect(() => {
     setRecord(null);
     setError("");
-    setStatusError("");
-    setStatusAction(null);
     setTab("profile");
     const abort = new AbortController(),
       p = new URLSearchParams(params);
@@ -66,68 +59,6 @@ export default function DetailDrawer({
     scope.delete("workspace");
     if (record?.source === "account") scope.set("user", String(record.user_id));
     else scope.set("workspace", target.id);
-  }
-  async function updateRecordStatus() {
-    if (!statusAction) return;
-    const workspaceAction = target.resource === "workspaces";
-    const projectAction = target.resource === "projects";
-    setStatusBusy(true);
-    setStatusError("");
-    try {
-      const requestBody = JSON.stringify(
-        workspaceAction
-          ? { resource: "workspace", workspaceId: target.id, action: statusAction }
-          : projectAction
-            ? { resource: "project", projectId: target.id, action: statusAction }
-            : {
-                userId:
-                  target.resource === "projects"
-                    ? String(record?.user_id || "")
-                    : target.id,
-                action: statusAction,
-              },
-      );
-      let response = await fetch("/api/admin", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: requestBody,
-      });
-      if (response.status === 503)
-        response = await fetch("/api/admin", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: requestBody,
-        });
-      const body = (await response.json()) as {
-        error?: string;
-        user?: { status?: string };
-        workspace?: { status?: string };
-        project?: { status?: string; blocked?: boolean };
-      };
-      const status = workspaceAction
-        ? body.workspace?.status
-        : projectAction
-          ? body.project?.status
-          : body.user?.status;
-      if (!response.ok || !status)
-        throw new Error(body.error || "The status could not be updated.");
-      setRecord((current) =>
-        current
-          ? projectAction && ["block", "unblock"].includes(statusAction)
-            ? { ...current, website_blocked: Boolean(body.project?.blocked) }
-            : { ...current, status }
-          : current,
-      );
-      setStatusAction(null);
-    } catch (reason) {
-      setStatusError(
-        reason instanceof Error
-          ? reason.message
-          : "The status could not be updated.",
-      );
-    } finally {
-      setStatusBusy(false);
-    }
   }
   const tabs =
     target.resource === "users"
@@ -186,87 +117,14 @@ export default function DetailDrawer({
           </div>
         ) : (
           <>
-            <div className={`profile-heading ${target.resource === "projects" ? "project-profile-heading" : ""}`}>
+            <div className="profile-heading">
               <span className="profile-icon">
                 <Icon name={target.resource} size={28} />
               </span>
-              <h2 title={String(record.name || record.user || record.id)}>
-                {String(record.name || record.user || record.id)}
-              </h2>
+              <h2>{String(record.name || record.user || record.id)}</h2>
               <p>{String(record.email || record.workspace || record.id)}</p>
               {record.status !== undefined && <Badge value={record.status} />}
-              {target.resource === "users" && (
-                <button
-                  type="button"
-                  className={`button user-status-action ${record.status === "blocked" ? "unblock" : "block"}`}
-                  onClick={() =>
-                    setStatusAction(
-                      record.status === "blocked" ? "unblock" : "block",
-                    )
-                  }
-                >
-                  <Icon
-                    name={
-                      record.status === "blocked"
-                        ? "user-unblock"
-                        : "user-block"
-                    }
-                    size={15}
-                  />
-                  {record.status === "blocked" ? "Unblock user" : "Block user"}
-                </button>
-              )}
-              {target.resource === "workspaces" &&
-                ["active", "suspended"].includes(String(record.status)) && (
-                  <button
-                    type="button"
-                    className={`button user-status-action workspace-status-action ${record.status === "active" ? "block" : "unblock"}`}
-                    onClick={() =>
-                      setStatusAction(
-                        record.status === "active" ? "deactivate" : "activate",
-                      )
-                    }
-                  >
-                    <Icon name="workspaces" size={15} />
-                    {record.status === "active"
-                      ? "Deactivate workspace"
-                      : "Activate workspace"}
-                  </button>
-                )}
-              {target.resource === "projects" && (
-                <div className="project-record-actions">
-                  <button
-                    type="button"
-                    className={`button user-status-action ${record.status === "deleted" ? "unblock" : "block"}`}
-                    onClick={() =>
-                      setStatusAction(
-                        record.status === "deleted" ? "restore" : "delete",
-                      )
-                    }
-                  >
-                    <Icon name={record.status === "deleted" ? "refresh" : "trash"} size={15} />
-                    {record.status === "deleted" ? "Restore project" : "Delete project"}
-                  </button>
-                  <button
-                    type="button"
-                    className={`button user-status-action ${record.website_blocked ? "unblock" : "block"}`}
-                    onClick={() =>
-                      setStatusAction(
-                        record.website_blocked ? "unblock" : "block",
-                      )
-                    }
-                  >
-                    <Icon name={record.website_blocked ? "user-unblock" : "user-block"} size={15} />
-                    {record.website_blocked ? "Unblock website" : "Block website"}
-                  </button>
-                </div>
-              )}
             </div>
-            {statusError && (
-              <div className="error-banner" role="alert">
-                <Icon name="info" size={17} /> {statusError}
-              </div>
-            )}
             <div className="tabs" role="tablist" aria-label="Record sections">
               {tabs.map((t) => (
                 <button
@@ -368,111 +226,6 @@ export default function DetailDrawer({
           </>
         )}
       </div>
-      {statusAction && record && (
-        <div className="confirmation-backdrop user-status-confirmation">
-          <section
-            className="confirmation-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="record-status-title"
-            aria-describedby="record-status-description"
-          >
-            <span className="confirmation-icon" aria-hidden="true">
-              <Icon
-                name={
-                  statusAction === "delete"
-                    ? "trash"
-                    : statusAction === "restore"
-                      ? "refresh"
-                      : statusAction === "block" || statusAction === "deactivate"
-                    ? "user-block"
-                    : "user-unblock"
-                }
-                size={22}
-              />
-            </span>
-            <h2 id="record-status-title">
-              {statusAction === "block"
-                ? target.resource === "projects"
-                  ? "Block this website?"
-                  : "Block this user?"
-                : statusAction === "unblock"
-                  ? target.resource === "projects"
-                    ? "Unblock this website?"
-                    : "Unblock this user?"
-                  : statusAction === "delete"
-                    ? "Delete this project?"
-                    : statusAction === "restore"
-                      ? "Restore this project?"
-                  : statusAction === "deactivate"
-                    ? "Deactivate this workspace?"
-                    : "Activate this workspace?"}
-            </h2>
-            <p id="record-status-description">
-              {statusAction === "block"
-                ? target.resource === "projects"
-                  ? `${String(record.name || "This website")} will become unavailable on public, custom-domain, and preview links until it is unblocked.`
-                  : `${String(record.name || record.email || "This user")} will be signed out immediately and will not be able to log in or access protected Horizon features.`
-                : statusAction === "unblock"
-                  ? target.resource === "projects"
-                    ? `${String(record.name || "This website")} will become available through its preview and published links again.`
-                    : `${String(record.name || record.email || "This user")} will be able to sign in to Horizon again. Previously revoked sessions will remain closed.`
-                  : statusAction === "delete"
-                    ? `${String(record.name || "This project")} will move to the recycle bin and will no longer be available to its owner.`
-                    : statusAction === "restore"
-                      ? `${String(record.name || "This project")} will be restored and available to its owner again.`
-                  : statusAction === "deactivate"
-                    ? `${String(record.name || "This workspace")} will be suspended immediately. Its owner and every member will lose access, existing workspace selections will stop working, and pending invitations cannot be accepted until it is activated again.`
-                    : `${String(record.name || "This workspace")} will become available to its owner and members again.`}
-            </p>
-            <div className="confirmation-actions">
-              <button
-                type="button"
-                className="button"
-                autoFocus
-                disabled={statusBusy}
-                onClick={() => setStatusAction(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={`button primary ${statusAction === "block" || statusAction === "deactivate" || statusAction === "delete" ? "danger" : ""}`}
-                disabled={statusBusy}
-                onClick={updateRecordStatus}
-              >
-                {statusBusy
-                  ? statusAction === "block"
-                    ? "Blocking…"
-                    : statusAction === "unblock"
-                      ? "Unblocking…"
-                      : statusAction === "delete"
-                        ? "Deleting…"
-                        : statusAction === "restore"
-                          ? "Restoring…"
-                      : statusAction === "deactivate"
-                        ? "Deactivating…"
-                        : "Activating…"
-                  : statusAction === "block"
-                    ? target.resource === "projects"
-                      ? "Block website"
-                      : "Block user"
-                    : statusAction === "unblock"
-                      ? target.resource === "projects"
-                        ? "Unblock website"
-                        : "Unblock user"
-                      : statusAction === "delete"
-                        ? "Delete project"
-                        : statusAction === "restore"
-                          ? "Restore project"
-                      : statusAction === "deactivate"
-                        ? "Deactivate workspace"
-                        : "Activate workspace"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
     </dialog>
   );
 }

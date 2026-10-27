@@ -17,7 +17,6 @@ import {
 } from "./Charts";
 import DataTable from "./DataTable";
 import DetailDrawer from "./DetailDrawer";
-import InternalUsers from "./InternalUsers";
 import { GlobalSearch, EntityPicker } from "./Search";
 import { catalog, limitations, planLabel, statusOptions } from "@/lib/catalog";
 
@@ -31,11 +30,6 @@ const navigation = [
     id: "users",
     label: "Users",
     description: "Understand your people, their activity, and their journey.",
-  },
-  {
-    id: "internal-users",
-    label: "Internal users",
-    description: "Approve and manage the people who can access Horizon Internal.",
   },
   {
     id: "plans",
@@ -93,15 +87,6 @@ const periods = [
   { value: "30d", label: "Last 30 days" },
   { value: "custom", label: "Custom range" },
 ];
-
-const visiblePlanNames = new Map([
-  ["workspace:free", "Free"],
-  ["workspace:pro", "Plus"],
-  ["workspace:business", "Pro"],
-]);
-const visiblePlans = catalog
-  .filter((plan) => visiblePlanNames.has(plan.key))
-  .map((plan) => ({ ...plan, name: visiblePlanNames.get(plan.key)! }));
 
 function PeriodPicker({
   value,
@@ -189,7 +174,7 @@ function PlanPicker({
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const selected = visiblePlans.find((plan) => plan.key === value);
+  const selected = catalog.find((plan) => plan.key === value);
   return (
     <div
       className="plan-picker"
@@ -205,6 +190,7 @@ function PlanPicker({
         onClick={() => setOpen((current) => !current)}
       >
         <span>{selected ? selected.name : "All plans"}</span>
+        {selected && <small>{selected.source}</small>}
         <Icon name="chevron" size={16} />
       </button>
       {open && (
@@ -222,147 +208,28 @@ function PlanPicker({
             <span>All plans</span>
             {!value && <i aria-hidden="true">✓</i>}
           </button>
-          <div className="plan-picker-group" role="group" aria-label="Plans">
-            <strong>Plans</strong>
-            {visiblePlans.map((plan) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={value === plan.key}
-                className={value === plan.key ? "selected" : ""}
-                key={plan.key}
-                onClick={() => {
-                  onChange(plan.key);
-                  setOpen(false);
-                }}
-              >
-                <span>{plan.name}</span>
-                {value === plan.key && <i aria-hidden="true">✓</i>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatusPicker({
-  value,
-  options,
-  allLabel,
-  heading = "Status",
-  ariaLabel = "Filter by status",
-  labels = {},
-  onChange,
-}: {
-  value: string;
-  options: string[];
-  allLabel: string;
-  heading?: string;
-  ariaLabel?: string;
-  labels?: Record<string, string>;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const label = (option: string) =>
-    option
-      .replaceAll("_", " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  return (
-    <div
-      className="status-picker"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        className="status-picker-trigger"
-        aria-label={ariaLabel}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span>{value ? labels[value] || label(value) : allLabel}</span>
-        <Icon name="chevron" size={15} />
-      </button>
-      {open && (
-        <div className="status-picker-menu" role="listbox" aria-label={ariaLabel}>
-          <strong>{heading}</strong>
-          {[{ value: "", label: allLabel }, ...options.map((option) => ({ value: option, label: labels[option] || label(option) }))].map(
-            (option) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={value === option.value}
-                className={value === option.value ? "selected" : ""}
-                key={option.value || "all"}
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-              >
-                <span>{option.label}</span>
-                {value === option.value && <i aria-hidden="true">✓</i>}
-              </button>
-            ),
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChartIntervalPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const options = [
-    { value: "day", label: "Today" },
-    { value: "week", label: "Week" },
-    { value: "month", label: "Month" },
-  ];
-  const selected = options.find((option) => option.value === value) || options[0];
-  return (
-    <div
-      className="chart-interval-picker"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        className="chart-interval-trigger"
-        aria-label="Chart interval"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span>{selected.label}</span>
-        <Icon name="down" size={14} />
-      </button>
-      {open && (
-        <div className="chart-interval-menu" role="listbox" aria-label="Chart interval">
-          {options.map((option) => (
-            <button
-              type="button"
-              role="option"
-              aria-selected={value === option.value}
-              className={value === option.value ? "selected" : ""}
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-            >
-              <span>{option.label}</span>
-              {value === option.value && <i aria-hidden="true">✓</i>}
-            </button>
+          {["Workspace", "Account"].map((source) => (
+            <div className="plan-picker-group" key={source} role="group" aria-label={`${source} plans`}>
+              <strong>{source} plans</strong>
+              {catalog
+                .filter((plan) => plan.source === source)
+                .map((plan) => (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={value === plan.key}
+                    className={value === plan.key ? "selected" : ""}
+                    key={plan.key}
+                    onClick={() => {
+                      onChange(plan.key);
+                      setOpen(false);
+                    }}
+                  >
+                    <span>{plan.name}</span>
+                    {value === plan.key && <i aria-hidden="true">✓</i>}
+                  </button>
+                ))}
+            </div>
           ))}
         </div>
       )}
@@ -390,9 +257,6 @@ export default function Dashboard({
     [globalSearch, setGlobalSearch] = useState(false),
     [notifications, setNotifications] = useState(false),
     [profile, setProfile] = useState(false),
-    [addInternalUser, setAddInternalUser] = useState(false),
-    [confirmLogout, setConfirmLogout] = useState(false),
-    [signingOut, setSigningOut] = useState(false),
     [detail, setDetail] = useState<{ resource: string; id: string } | null>(
       null,
     );
@@ -403,6 +267,7 @@ export default function Dashboard({
           ? "credits"
           : "users",
     ),
+    [dimension, setDimension] = useState("project"),
     [creditTab, setCreditTab] = useState("credits"),
     [workspaceTab, setWorkspaceTab] = useState("workspaces");
   const [customStart, setCustomStart] = useState(p.get("start") || ""),
@@ -468,8 +333,6 @@ export default function Dashboard({
         setMobile(false);
         setNotifications(false);
         setProfile(false);
-        setAddInternalUser(false);
-        setConfirmLogout(false);
       }
     };
     window.addEventListener("keydown", listener);
@@ -534,10 +397,18 @@ export default function Dashboard({
     granularity = p.get("granularity") || "day",
     period = p.get("period") || "30d";
   const chartActions = (
-    <ChartIntervalPicker
-      value={granularity}
-      onChange={(value) => setParams({ granularity: value })}
-    />
+    <div className="segmented" aria-label="Chart interval">
+      {["day", "week", "month"].map((g) => (
+        <button
+          key={g}
+          className={granularity === g ? "selected" : ""}
+          aria-pressed={granularity === g}
+          onClick={() => setParams({ granularity: g })}
+        >
+          {g[0].toUpperCase() + g.slice(1)}
+        </button>
+      ))}
+    </div>
   );
   const tableResource =
     section === "credits"
@@ -547,7 +418,6 @@ export default function Dashboard({
         : section;
   const tableParams = new URLSearchParams(params);
   tableParams.delete("page");
-  if (!tableParams.has("allDates")) tableParams.set("allDates", "true");
   const showStock = (key: string) =>
     new URLSearchParams({
       ...Object.fromEntries(tableParams),
@@ -583,18 +453,40 @@ export default function Dashboard({
       ))}
     </div>
   );
-  const dimension = "project";
   const periodNote = "Selected reporting period",
     currentNote = "Current snapshot";
   const breakdownPanel = (
     <Panel
       title="Where credits go"
-      description="Top 5 projects · selected period"
+      description="Top 10 consumers · selected period"
+      action={
+        <select
+          aria-label="Credit breakdown dimension"
+          value={dimension}
+          onChange={(e) => setDimension(e.target.value)}
+        >
+          {["project", "user", "workspace", "plan", "operation"].map((v) => (
+            <option key={v} value={v}>
+              By {v}
+            </option>
+          ))}
+        </select>
+      }
     >
       <Breakdown
-        rows={(data?.breakdowns?.[dimension] || []).slice(0, 5)}
+        rows={data?.breakdowns?.[dimension] || []}
         dimension={dimension}
-        onSelect={(id) => navigate("credits", "project", id)}
+        onSelect={
+          dimension === "user"
+            ? (id) => navigate("credits", "user", id)
+            : dimension === "workspace"
+              ? (id) => navigate("credits", "workspace", id)
+              : dimension === "project"
+                ? (id) => navigate("credits", "project", id)
+                : dimension === "plan"
+                  ? (id) => setParams({ plan: id })
+                  : undefined
+        }
       />
     </Panel>
   );
@@ -615,21 +507,13 @@ export default function Dashboard({
   );
   async function logout() {
     setError("");
-    setSigningOut(true);
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (!res.ok) throw new Error((await res.json()).error);
       window.location.assign("/login");
     } catch (e) {
       setError((e as Error).message);
-      setConfirmLogout(false);
-      setSigningOut(false);
     }
-  }
-  function requestLogout() {
-    setProfile(false);
-    setNotifications(false);
-    setConfirmLogout(true);
   }
   return (
     <div className="app-shell">
@@ -663,7 +547,7 @@ export default function Dashboard({
         <div className="sidebar-scroll">
           <span className="nav-label">WORKSPACE</span>
           <nav aria-label="Main navigation">
-          {navigation.filter((n) => n.id !== "settings").map((n) => (
+          {navigation.slice(0, 8).map((n) => (
             <Link
               key={n.id}
               href={`/${n.id}?${new URLSearchParams([...p].filter(([k]) => !["q", "status", "activity", "allDates"].includes(k)))}`}
@@ -715,7 +599,7 @@ export default function Dashboard({
             <button
               className="icon-button"
               aria-label="Sign out"
-              onClick={requestLogout}
+              onClick={logout}
             >
               <Icon name="logout" size={17} />
             </button>
@@ -741,6 +625,15 @@ export default function Dashboard({
             </span>
           </div>
           <div className="topbar-actions">
+            <button
+              className="global-search"
+              aria-label="Search all platform records"
+              onClick={() => setGlobalSearch(true)}
+            >
+              <Icon name="search" size={17} />
+              <span>Search anything…</span>
+              <kbd>Ctrl K</kbd>
+            </button>
             <div className="popover-wrap">
               <button
                 className="icon-button notification-button"
@@ -806,7 +699,7 @@ export default function Dashboard({
                   <Link href="/settings">
                     <Icon name="settings" size={16} /> Workspace preferences
                   </Link>
-                  <button onClick={requestLogout}>
+                  <button onClick={logout}>
                     <Icon name="logout" size={16} /> Sign out
                   </button>
                 </div>
@@ -824,17 +717,8 @@ export default function Dashboard({
               </h1>
               <p>{current.description}</p>
             </div>
-            <div className={`page-actions ${section === "internal-users" ? "internal-users-page-actions" : ""}`}>
-              {section === "internal-users" && (
-                <button
-                  type="button"
-                  className="button primary"
-                  onClick={() => setAddInternalUser(true)}
-                >
-                  <Icon name="internal-users" size={16} /> Add user
-                </button>
-              )}
-              {!["settings", "internal-users"].includes(section) && (
+            <div className="page-actions">
+              {section !== "settings" && (
                 <>
                   <button
                     className={`button icon-only ${loading ? "refreshing" : ""}`}
@@ -922,7 +806,7 @@ export default function Dashboard({
               {rangeError && <span role="alert">{rangeError}</span>}
             </form>
           )}
-          {!["settings", "internal-users"].includes(section) && (
+          {section !== "settings" && (
             <>
               <div className="context-line">
                 <span className={`live-dot ${error ? "offline" : ""}`} />
@@ -1010,52 +894,17 @@ export default function Dashboard({
           )}
           {loading && !data ? (
             <div
-              className={`dashboard-skeleton dashboard-skeleton-${section}`}
+              className="dashboard-skeleton"
               role="status"
               aria-label="Loading dashboard"
             >
-              {section === "overview" ? (
-                <>
-                  <div className="metric-grid" aria-hidden="true">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div className="skeleton-metric" key={i}>
-                        <span className="skeleton-line label" />
-                        <span className="skeleton-icon" />
-                        <span className="skeleton-line value" />
-                        <span className="skeleton-line note" />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="skeleton-overview-grid" aria-hidden="true">
-                    <div className="skeleton-panel skeleton-chart">
-                      <span className="skeleton-line title" />
-                      <span className="skeleton-line subtitle" />
-                      <div className="skeleton-plot" />
-                    </div>
-                    <div className="skeleton-panel skeleton-chart">
-                      <span className="skeleton-line title" />
-                      <span className="skeleton-line subtitle" />
-                      <div className="skeleton-donut" />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="skeleton-panel skeleton-table" aria-hidden="true">
-                  <div className="skeleton-table-heading">
-                    <span className="skeleton-line title" />
-                    <span className="skeleton-line action" />
-                  </div>
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div className="skeleton-table-row" key={i}>
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  ))}
-                </div>
-              )}
-              <span className="sr-only">Loading the latest Horizon data…</span>
+              <div className="metric-grid">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} />
+                ))}
+              </div>
+              <div className="skeleton-chart" />
+              <div className="skeleton-chart short" />
             </div>
           ) : (
             data && (
@@ -1068,10 +917,10 @@ export default function Dashboard({
                   <>
                     {metricCards([
                       {
-                        label: "Registered customers",
+                        label: "Total registered users",
                         key: "users",
                         icon: "users",
-                        note: currentNote,
+                        note: `${number(s.new_users)} registered in this period`,
                         target: "users",
                       },
                       {
@@ -1128,6 +977,10 @@ export default function Dashboard({
                               </button>
                             ))}
                           </div>
+                          <span className="chart-unit">
+                            <i />
+                            {periods.find((v) => v.value === period)?.label}
+                          </span>
                         </div>
                         <LineChart
                           rows={data.series}
@@ -1292,8 +1145,18 @@ export default function Dashboard({
                         note: "Recurring collection not confirmed",
                       },
                     ])}
+                    <div className="info-banner">
+                      <Icon name="info" size={18} />
+                      <span>
+                        Plan names match Horizon:{" "}
+                        <strong>Starter (account) → Pro (workspace)</strong>,
+                        and{" "}
+                        <strong>Pro (account) → Business (workspace)</strong>.
+                        Plus is not configured. Users may own multiple plans.
+                      </span>
+                    </div>
                     <div className="plan-cards">
-                      {visiblePlans
+                      {catalog
                         .filter(
                           (c) => !p.get("plan") || c.key === p.get("plan"),
                         )
@@ -1313,7 +1176,7 @@ export default function Dashboard({
                                 <span className="plan-symbol">
                                   <Icon name="plans" />
                                 </span>
-                                <span className="badge">Horizon plan</span>
+                                <span className="badge">{plan.source}</span>
                               </div>
                               <h2>{plan.name}</h2>
                               <p className="plan-price">
@@ -1365,6 +1228,7 @@ export default function Dashboard({
                                   </div>
                                 ))}
                               </dl>
+                              <p className="plan-mapping">{plan.mapping}</p>
                               <div className="plan-revenue">
                                 <span>Verified lifetime gross</span>
                                 <strong>{money(purchases?.gross || 0)}</strong>
@@ -1386,8 +1250,10 @@ export default function Dashboard({
                         })}
                     </div>
                     <p className="data-note">
-                      Prices come from the existing Horizon configuration, not
-                      revenue estimates. Cancellation history is unavailable.
+                      Prices are configuration from the existing Horizon source,
+                      not revenue estimates. Annual Business prices differ
+                      between billing generations. Cancellation history is
+                      unavailable.
                     </p>
                     <DataTable
                       resource="subscriptions"
@@ -1643,7 +1509,7 @@ export default function Dashboard({
                         },
                         { k: "failed", label: "Failed", color: "red" },
                         { k: "pending", label: "Pending", color: "amber" },
-                        { k: "refunded", label: "Refunded", color: "rose" },
+                        { k: "refunded", label: "Refunded", color: "purple" },
                       ].map((v) => (
                         <button
                           className={v.color}
@@ -1770,40 +1636,47 @@ export default function Dashboard({
                         />
                       </label>
                       <div>
-                        <StatusPicker
+                        <select
+                          aria-label="Filter by status or operation"
                           value={p.get("status") || ""}
-                          options={statusOptions[tableResource] || []}
-                          allLabel={
-                            tableResource === "credits"
+                          onChange={(e) =>
+                            setParams({ status: e.target.value })
+                          }
+                        >
+                          <option value="">
+                            {tableResource === "credits"
                               ? "All operations"
                               : tableResource === "members"
                                 ? "All roles"
-                                : "All statuses"
-                          }
-                          onChange={(status) => setParams({ status })}
-                        />
+                                : "All statuses"}
+                          </option>
+                          {(statusOptions[tableResource] || []).map((v) => (
+                            <option key={v} value={v}>
+                              {v.replaceAll("_", " ")}
+                            </option>
+                          ))}
+                        </select>
                         {section === "users" && (
-                          <StatusPicker
+                          <select
+                            aria-label="Filter by activity"
                             value={p.get("activity") || ""}
-                            options={["active", "inactive"]}
-                            allLabel="All activity"
-                            heading="Activity"
-                            ariaLabel="Filter by activity"
-                            labels={{
-                              active: "Active in period",
-                              inactive: "No recent activity",
-                            }}
-                            onChange={(activity) => setParams({ activity })}
-                          />
+                            onChange={(e) =>
+                              setParams({ activity: e.target.value })
+                            }
+                          >
+                            <option value="">All activity</option>
+                            <option value="active">Active in period</option>
+                            <option value="inactive">No recent activity</option>
+                          </select>
                         )}
                         {!["credits", "payments"].includes(section) && (
                           <label className="checkbox-label">
                             <input
                               type="checkbox"
-                              checked={p.get("allDates") !== "false"}
+                              checked={p.get("allDates") === "true"}
                               onChange={(e) =>
                                 setParams({
-                                  allDates: e.target.checked ? "true" : "false",
+                                  allDates: e.target.checked ? "true" : "",
                                 })
                               }
                             />
@@ -1973,13 +1846,6 @@ export default function Dashboard({
                     />
                   </>
                 )}
-                {section === "internal-users" && (
-                  <InternalUsers
-                    currentEmail={admin.email}
-                    addOpen={addInternalUser}
-                    onCloseAdd={() => setAddInternalUser(false)}
-                  />
-                )}
                 {section === "settings" && (
                   <>
                     <div className="settings-grid">
@@ -2033,7 +1899,7 @@ export default function Dashboard({
                               Eight-hour, signed, HTTP-only session.
                             </small>
                           </span>
-                          <button className="button" onClick={requestLogout}>
+                          <button className="button" onClick={logout}>
                             Sign out
                           </button>
                         </div>
@@ -2129,51 +1995,6 @@ export default function Dashboard({
       {globalSearch && (
         <GlobalSearch onClose={() => setGlobalSearch(false)} onSelect={open} />
       )}{" "}
-      {confirmLogout && (
-        <div
-          className="confirmation-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !signingOut)
-              setConfirmLogout(false);
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="signout-title"
-            aria-describedby="signout-description"
-          >
-            <span className="confirmation-icon" aria-hidden="true">
-              <Icon name="logout" size={22} />
-            </span>
-            <h2 id="signout-title">Sign out of Horizon?</h2>
-            <p id="signout-description">
-              You’ll need to sign in again to access the administration workspace.
-            </p>
-            <div className="confirmation-actions">
-              <button
-                type="button"
-                className="button"
-                autoFocus
-                disabled={signingOut}
-                onClick={() => setConfirmLogout(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="button primary"
-                disabled={signingOut}
-                onClick={logout}
-              >
-                {signingOut ? "Signing out…" : "Sign out"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
       {detail && (
         <DetailDrawer
           target={detail}

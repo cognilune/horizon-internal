@@ -3,13 +3,13 @@
 export const model = `WITH
  clock AS (SELECT $1::timestamptz now,$2::timestamptz start_at,$3::timestamptz end_at),
  customers AS (
-  SELECT u.id,u.name,u.email,CASE WHEN u.status IN ('blocked','suspended') THEN 'blocked' ELSE u.status END status,u.created_at,u.last_login_at,
+  SELECT u.id,u.name,u.email,u.status,u.created_at,u.last_login_at,
    GREATEST(u.last_login_at,(SELECT MAX(s.last_seen_at) FROM customer_account_sessions s WHERE s.user_id=u.id)) last_active_at
   FROM users u WHERE u.role='customer'
  ),
  wallets AS (
   SELECT w.id,w.owner_user_id user_id,w.name,w.plan_code,'workspace:'||w.plan_code plan_key,
-   'workspace' source,w.billing_interval,CASE WHEN w.status='deleted' THEN 'suspended' ELSE w.status END status,w.created_at,w.updated_at,w.plan_started_at,w.plan_expires_at,
+   'workspace' source,w.billing_interval,w.status,w.created_at,w.updated_at,w.plan_started_at,w.plan_expires_at,
    w.daily_limit,w.subscription_credits,w.topup_credits,
    CASE WHEN w.status='active' AND (CASE WHEN w.plan_code='free' THEN w.free_credits_until ELSE w.plan_expires_at END)>(SELECT now FROM clock)
     THEN CASE WHEN w.last_refill_on<((SELECT now FROM clock) AT TIME ZONE 'UTC')::date THEN w.daily_limit ELSE w.daily_remaining END ELSE 0 END daily_remaining,
@@ -167,25 +167,13 @@ export const tableQueries = {
   (SELECT COUNT(*)::int FROM scoped_projects p WHERE p.workspace_id=s.id AND p.deleted_at IS NULL) projects,
   (SELECT COALESCE(SUM(credits),0)::float FROM period_usage x WHERE x.workspace_id=s.id) credits_used
  FROM scoped_wallets s JOIN customers u ON u.id=s.user_id WHERE s.source='workspace'`,
-  projects: `SELECT p.id,p.name,p.owner_user_id user_id,u.name owner,u.email,COALESCE((to_jsonb(p)->'memory'->>'adminBlocked')::boolean,false) website_blocked,p.workspace_id,w.name workspace,
-  COALESCE(
-    (SELECT 'https://'||d.hostname FROM customer_workspace_domains d WHERE d.project_id=p.id AND d.status IN ('connected','published') AND d.ssl_status='active' ORDER BY d.published_at DESC NULLS LAST LIMIT 1),
-    (SELECT d.url FROM ai_deployments d WHERE d.project_id=p.id AND d.status='ready' ORDER BY d.completed_at DESC NULLS LAST,d.id DESC LIMIT 1),
-    '/api/admin/project-preview/'||p.id
-  ) website_url,p.created_at,p.updated_at,p.project_status status,
+  projects: `SELECT p.id,p.name,p.owner_user_id user_id,u.name owner,u.email,p.workspace_id,w.name workspace,p.created_at,p.updated_at,p.project_status status,
   (SELECT COALESCE(SUM(x.credits),0)::float FROM period_usage x WHERE x.project_id=p.id) credits_used,
   (SELECT COUNT(*)::int FROM period_usage x WHERE x.project_id=p.id) operations
  FROM scoped_projects p JOIN customers u ON u.id=p.owner_user_id LEFT JOIN customer_workspaces w ON w.id=p.workspace_id`,
-  credits: `SELECT MIN(x.id) id,x.user_id,u.name "user",u.email,x.actor_id,a.name actor,x.workspace_id,w.name workspace,
-  CASE WHEN COUNT(DISTINCT x.project_id)=1 THEN MAX(x.project_id) END project_id,
-  CASE WHEN COUNT(DISTINCT x.project_id)=1 THEN MAX(x.project_name)
-   WHEN COUNT(DISTINCT x.project_id)>1 THEN COUNT(DISTINCT x.project_id)::text||' projects'
-   ELSE 'Unattributed operations' END project,
-  x.plan_key plan,x.operation,x.action,SUM(x.credits)::float credits,MAX(x.created_at) created_at,
-  CASE WHEN COUNT(DISTINCT x.source)=1 THEN MAX(x.source) ELSE 'combined' END source,
-  NULL::numeric balance_after,COUNT(*)::int events
- FROM period_usage x JOIN customers u ON u.id=x.user_id LEFT JOIN users a ON a.id=x.actor_id LEFT JOIN customer_workspaces w ON w.id=x.workspace_id
- GROUP BY x.user_id,u.name,u.email,x.actor_id,a.name,x.workspace_id,w.name,x.plan_key,x.operation,x.action`,
+  credits: `SELECT x.id,x.user_id,u.name "user",u.email,x.actor_id,a.name actor,x.workspace_id,w.name workspace,x.project_id,x.project_name project,
+  x.plan_key plan,x.operation,x.action,x.credits::float credits,x.created_at,x.source,x.balance_after
+ FROM period_usage x JOIN customers u ON u.id=x.user_id LEFT JOIN users a ON a.id=x.actor_id LEFT JOIN customer_workspaces w ON w.id=x.workspace_id`,
   payments: `SELECT p.id,p.user_id,u.name "user",u.email,p.workspace_id,w.name workspace,p.plan_key plan,p.kind,
   p.amount_paise::float/100 amount,p.currency,CASE WHEN p.status='paid' AND NOT p.verified THEN 'unverified' ELSE p.status END status,p.status recorded_status,p.verified,p.created_at,p.paid_at,p.event_at,p.method,p.order_id,p.provider_payment_id,p.billing_interval,p.source
  FROM period_payments p JOIN customers u ON u.id=p.user_id LEFT JOIN customer_workspaces w ON w.id=p.workspace_id`,

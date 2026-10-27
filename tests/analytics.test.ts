@@ -67,8 +67,6 @@ test("resource queries, search, scope and detail work against PostgreSQL", async
   assert.equal(scoped.summary.gross, 0, "Project revenue is not allocated");
   const result = await detail(db.query, "users", "alice", filters());
   assert.equal(result.record.name, "Alice Test");
-  const projects = await table(db.query, "projects", filters(), { allDates: true });
-  assert.match(String(projects.rows[0].website_url), /^\/api\/admin\/project-preview\//);
   assert.equal((await search(db.query, "studio"))[0].kind, "projects");
   const empty = await table(db.query, "users", filters({ q: "' OR 1=1 --" }));
   assert.equal(empty.total, 0);
@@ -167,23 +165,6 @@ test("duplicate ledger writes for one reservation count once", async () => {
     const result = await overview(db.query, filters());
     assert.equal(result.summary.credits, 9);
     assert.equal(result.summary.operations, 3);
-  } finally {
-    await db.pg.exec("ROLLBACK");
-  }
-});
-test("credit ledger combines matching usage and shows the summed credits once", async () => {
-  await db.pg.exec("BEGIN");
-  try {
-    await db.pg.exec(`
-      INSERT INTO customer_credit_usage VALUES
-       (11,'alice','alice','p1','c1','Brand studio','Build',1,'2026-10-21 08:00:00Z','build','{}'),
-       (12,'alice','alice','deleted',NULL,'Deleted project','Build',1,'2026-10-21 09:00:00Z','build','{}');
-    `);
-    const ledger = await table(db.query, "credits", filters({ workspace: "w1", status: "build" }));
-    assert.equal(ledger.total, 1);
-    assert.equal(ledger.rows[0].credits, 5);
-    assert.equal(ledger.rows[0].events, 3);
-    assert.equal(ledger.rows[0].project, "2 projects");
   } finally {
     await db.pg.exec("ROLLBACK");
   }

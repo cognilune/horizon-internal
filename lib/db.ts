@@ -43,7 +43,7 @@ export function getDb(analytics = true) {
       Math.max(1, Number(process.env.DATABASE_MAX_CONNECTIONS) || 4),
     ),
     idle_timeout: 20,
-    connect_timeout: 20,
+    connect_timeout: 10,
     connection: {
       application_name: "horizon-internal",
       statement_timeout: 15000,

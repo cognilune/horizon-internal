@@ -30,8 +30,6 @@ const env = {
     allowed.filter((k) => loaded[k]).map((k) => [k, loaded[k]]),
   ),
   APP_ORIGIN: "http://localhost:3100",
-  HORIZON_PUBLIC_ORIGIN:
-    loaded.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
 };
 const args =
   command === "check:data"

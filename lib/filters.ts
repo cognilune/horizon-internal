@@ -66,12 +66,12 @@ export function parseFilters(
     );
   const get = (key: string) => (params.get(key) || "").trim().slice(0, 200);
   const page = Number(params.get("page") || 1),
-    pageSize = Number(params.get("pageSize") || 5);
+    pageSize = Number(params.get("pageSize") || 20);
   if (
     !Number.isInteger(page) ||
     page < 1 ||
     page > 100000 ||
-    ![5, 10, 20, 50, 100].includes(pageSize)
+    ![10, 20, 50, 100].includes(pageSize)
   )
     throw new PublicError("Invalid pagination.");
   const granularity = params.get("granularity") || "day";

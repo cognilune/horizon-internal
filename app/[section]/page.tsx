@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 const sections = [
   "overview",
   "users",
-  "internal-users",
   "plans",
   "workspaces",
   "projects",
