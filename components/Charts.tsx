@@ -171,14 +171,14 @@ export function LineChart({
               x2={w - right}
               y1={y(max * t)}
               y2={y(max * t)}
-              stroke="#e9eaf1"
+              stroke="var(--border)"
               strokeDasharray="3 4"
             />
             <text
               x={left - 10}
               y={y(max * t) + 4}
               textAnchor="end"
-              fill="#9295a4"
+              fill="var(--muted)"
               fontSize="10"
             >
               {currency
@@ -215,7 +215,7 @@ export function LineChart({
                   i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"
                 }
                 fontSize="10"
-                fill="#9295a4"
+                fill="var(--muted)"
               >
                 {date(row.day).slice(0, 6)}
               </text>
@@ -286,9 +286,9 @@ const colors = [
   "#f08ca7",
   "#8fc7bb",
   "#e3c383",
-  "#596071",
+  "#62666e",
   "#df7896",
-  "#b4bac8",
+  "#b5bac2",
 ];
 export function PlanChart({
   plans,
@@ -319,7 +319,7 @@ export function PlanChart({
             cy="90"
             r="67"
             fill="none"
-            stroke="#f0eff5"
+            stroke="var(--surface-muted)"
             strokeWidth="22"
           />
           {plans.map((p, i) => {

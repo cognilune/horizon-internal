@@ -6,7 +6,7 @@ import { planLabel, sortableColumns } from "@/lib/catalog";
 type Column = {
   key: string;
   label: string;
-  type?: "date" | "number" | "money" | "badge" | "plan" | "person" | "boolean";
+  type?: "date" | "number" | "money" | "badge" | "plan" | "person" | "boolean" | "url";
 };
 const c = (key: string, label: string, type?: Column["type"]): Column => ({
   key,
@@ -71,6 +71,7 @@ export const columns: Record<string, Column[]> = {
     c("name", "Project"),
     c("owner", "Owner", "person"),
     c("workspace", "Workspace"),
+    c("website_url", "URL", "url"),
     c("credits_used", "Credits used", "number"),
     c("operations", "Operations", "number"),
     c("status", "Status", "badge"),
@@ -86,6 +87,7 @@ export const columns: Record<string, Column[]> = {
     c("project", "Project"),
     c("operation", "Operation", "badge"),
     c("credits", "Credits", "number"),
+    c("events", "Combined entries", "number"),
     c("plan", "Current plan", "plan"),
     c("action", "Action"),
     c("balance_after", "Balance after", "number"),
@@ -127,6 +129,51 @@ export const columns: Record<string, Column[]> = {
     c("id", "Membership ID"),
   ],
 };
+
+function PageSizePicker({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const options = [5, 10, 20, 50, 100];
+  return (
+    <div
+      className="page-size-picker"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className="page-size-trigger"
+        aria-label={`Rows per page: ${value}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{value}</span>
+        <Icon name="down" size={13} />
+      </button>
+      {open && (
+        <div className="page-size-menu" role="listbox" aria-label="Rows per page">
+          {options.map((option) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={option === value}
+              className={option === value ? "selected" : ""}
+              key={option}
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+            >
+              <span>{option}</span>
+              {option === value && <i aria-hidden="true">✓</i>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 export function Badge({ value }: { value: unknown }) {
   const text = String(value || "unavailable");
   return (
@@ -177,6 +224,24 @@ export function Cell({ row, column }: { row: DataRow; column: Column }) {
         {value ? "Verified" : "Unconfirmed"}
       </span>
     );
+  if (
+    column.type === "url" &&
+    (/^https?:\/\//i.test(String(value)) || String(value).startsWith("/"))
+  )
+    return (
+      <a
+        className="table-url-link"
+        href={String(value)}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={String(value)}
+      >
+        {String(value).startsWith("/api/admin/project-preview/")
+          ? "Open preview"
+          : String(value).replace(/^https?:\/\//i, "").replace(/\/$/, "")}
+        <Icon name="arrow" size={13} />
+      </a>
+    );
   return (
     <span
       className={column.key.endsWith("id") ? "identifier" : ""}
@@ -210,7 +275,7 @@ export default function DataTable({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(true);
   const [page, setPage] = useState(1),
-    [size, setSize] = useState(compact ? 10 : 20),
+    [size, setSize] = useState(5),
     [sort, setSort] = useState(""),
     [direction, setDirection] = useState("desc"),
     [retry, setRetry] = useState(0),
@@ -288,15 +353,17 @@ export default function DataTable({
             )}
           </h2>
           <p>
-            {["credits", "payments"].includes(resource)
-              ? "Recorded events in the selected period"
+            {resource === "credits"
+              ? "Combined credit usage in the selected period"
+              : resource === "payments"
+                ? "Recorded events in the selected period"
               : new URLSearchParams(params).get("allDates") === "true"
                 ? "Current records · usage reflects selected period"
                 : "Created in the selected period · balances are current"}
           </p>
         </div>
         <button
-          className="button small"
+          className="button small export-csv-button"
           onClick={exportCsv}
           disabled={exporting || busy || result?.total === 0}
         >
@@ -370,7 +437,8 @@ export default function DataTable({
                       <td key={col.key}>
                         {i === 0 && clickable ? (
                           <button
-                            className="row-link"
+                            className={`row-link ${resource === "projects" ? "project-name-link" : ""}`}
+                            title={String(row[col.key] || "")}
                             onClick={() => onOpen!(resource, String(row.id))}
                           >
                             <Cell row={row} column={col} />
@@ -434,17 +502,10 @@ export default function DataTable({
               {number(result.total, 0)} records
             </span>
             <div>
-              <label>
-                Rows{" "}
-                <select
-                  value={size}
-                  onChange={(e) => setSize(Number(e.target.value))}
-                >
-                  {[10, 20, 50, 100].map((n) => (
-                    <option key={n}>{n}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="page-size-control">
+                <span>Rows</span>
+                <PageSizePicker value={size} onChange={setSize} />
+              </div>
               <button
                 className="icon-button"
                 aria-label="Previous page"

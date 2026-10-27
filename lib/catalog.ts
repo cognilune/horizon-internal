@@ -145,6 +145,7 @@ export const sortableColumns: Record<string, string[]> = {
   credits: [
     "created_at",
     "credits",
+    "events",
     "operation",
     "user",
     "actor",
@@ -191,7 +192,7 @@ export const sortableColumns: Record<string, string[]> = {
   ],
 };
 export const statusOptions: Record<string, string[]> = {
-  users: ["active", "suspended"],
+  users: ["active", "blocked"],
   subscriptions: [
     "free",
     "active",
