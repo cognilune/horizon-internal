@@ -589,10 +589,10 @@ export default function Dashboard({
   const breakdownPanel = (
     <Panel
       title="Where credits go"
-      description="Top 5 projects · selected period"
+      description="Projects by credits · selected period"
     >
       <Breakdown
-        rows={(data?.breakdowns?.[dimension] || []).slice(0, 5)}
+        rows={data?.breakdowns?.[dimension] || []}
         dimension={dimension}
         onSelect={(id) => navigate("credits", "project", id)}
       />
@@ -801,14 +801,34 @@ export default function Dashboard({
               </button>
               {profile && (
                 <div className="popover profile-popover">
-                  <strong>{admin.name}</strong>
-                  <p>{admin.email}</p>
-                  <Link href="/settings">
-                    <Icon name="settings" size={16} /> Workspace preferences
-                  </Link>
-                  <button onClick={requestLogout}>
-                    <Icon name="logout" size={16} /> Sign out
-                  </button>
+                  <div className="profile-popover-header">
+                    <span className="avatar purple">
+                      {admin.name
+                        .split(" ")
+                        .map((s) => s[0])
+                        .slice(0, 2)
+                        .join("")}
+                    </span>
+                    <div>
+                      <strong>{admin.name}</strong>
+                      <p>{admin.email}</p>
+                    </div>
+                  </div>
+                  <div className="profile-popover-actions">
+                    <Link href="/settings" onClick={() => setProfile(false)}>
+                      <Icon name="settings" size={17} />
+                      <span>Workspace preferences</span>
+                      <Icon name="chevron" size={14} />
+                    </Link>
+                    <button
+                      type="button"
+                      className="profile-signout-action"
+                      onClick={requestLogout}
+                    >
+                      <Icon name="logout" size={17} />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -828,10 +848,10 @@ export default function Dashboard({
               {section === "internal-users" && (
                 <button
                   type="button"
-                  className="button primary"
+                  className="button primary add-internal-user-button"
                   onClick={() => setAddInternalUser(true)}
                 >
-                  <Icon name="internal-users" size={16} /> Add user
+                  <Icon name="internal-users" size={18} /> Add user
                 </button>
               )}
               {!["settings", "internal-users"].includes(section) && (
@@ -987,7 +1007,7 @@ export default function Dashboard({
                       });
                     }}
                   >
-                    Clear filters <Icon name="close" size={12} />
+                    Clear filters <Icon name="close" size={16} />
                   </button>
                 )}
               </div>
@@ -1876,41 +1896,6 @@ export default function Dashboard({
                       </Panel>
                       {breakdownPanel}
                     </div>
-                    <Panel
-                      title="Subscription status"
-                      description="Current entitlements, grouped by plan"
-                    >
-                      <div className="table-scroll">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Plan</th>
-                              <th>Active</th>
-                              <th>Inactive</th>
-                              <th>Expired</th>
-                              <th>Pending</th>
-                              <th>Unknown</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {data.plans.map((r) => (
-                              <tr key={String(r.key)}>
-                                <td>{planLabel(r.key)}</td>
-                                {[
-                                  "active",
-                                  "inactive",
-                                  "expired",
-                                  "pending",
-                                  "unknown",
-                                ].map((k) => (
-                                  <td key={k}>{number(r[k])}</td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </Panel>
                     <div className="report-grid">
                       <Panel
                         title="Choose a report"
@@ -1986,6 +1971,32 @@ export default function Dashboard({
                       <Panel
                         title="Administrator profile"
                         description="Access is checked against the existing Horizon account"
+                        className="administrator-profile-panel"
+                        action={
+                          <div className="settings-refresh-action">
+                            <span>
+                              <strong>Automatic refresh</strong>
+                              <small>
+                                Refresh visible reports every 30 seconds.
+                              </small>
+                            </span>
+                            <label className="switch">
+                              <input
+                                type="checkbox"
+                                checked={autoRefresh}
+                                aria-label="Automatic refresh"
+                                onChange={(e) => {
+                                  setAutoRefresh(e.target.checked);
+                                  localStorage.setItem(
+                                    "horizon-auto-refresh",
+                                    String(e.target.checked),
+                                  );
+                                }}
+                              />
+                              <span />
+                            </label>
+                          </div>
+                        }
                       >
                         <div className="settings-profile">
                           <span className="avatar purple large">
@@ -2002,38 +2013,12 @@ export default function Dashboard({
                               Administrator
                             </span>
                           </div>
-                        </div>
-                        <div className="setting-row">
-                          <span>
-                            <strong>Automatic refresh</strong>
-                            <small>
-                              Refresh visible reports every 30 seconds.
-                            </small>
-                          </span>
-                          <label className="switch">
-                            <input
-                              type="checkbox"
-                              checked={autoRefresh}
-                              aria-label="Automatic refresh"
-                              onChange={(e) => {
-                                setAutoRefresh(e.target.checked);
-                                localStorage.setItem(
-                                  "horizon-auto-refresh",
-                                  String(e.target.checked),
-                                );
-                              }}
-                            />
-                            <span />
-                          </label>
-                        </div>
-                        <div className="setting-row">
-                          <span>
-                            <strong>Session</strong>
-                            <small>
-                              Eight-hour, signed, HTTP-only session.
-                            </small>
-                          </span>
-                          <button className="button" onClick={requestLogout}>
+                          <button
+                            type="button"
+                            className="button settings-signout-button"
+                            onClick={requestLogout}
+                          >
+                            <Icon name="logout" size={16} />
                             Sign out
                           </button>
                         </div>
@@ -2080,37 +2065,6 @@ export default function Dashboard({
                         ))}
                       </div>
                     </Panel>
-                    <Panel
-                      title="Plan mapping"
-                      description="Names and prices are preserved from the existing platform"
-                    >
-                      <div className="table-scroll">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Source</th>
-                              <th>Plan</th>
-                              <th>Monthly</th>
-                              <th>Yearly</th>
-                              <th>Plan credits</th>
-                              <th>Mapping</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {catalog.map((c) => (
-                              <tr key={c.key}>
-                                <td>{c.source}</td>
-                                <td>{c.name}</td>
-                                <td>{money(c.monthly)}</td>
-                                <td>{money(c.yearly)}</td>
-                                <td>{number(c.credits)}</td>
-                                <td>{c.mapping}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </Panel>
                   </>
                 )}
               </div>
@@ -2121,7 +2075,7 @@ export default function Dashboard({
               Horizon Internal <span>·</span> A clearer view of your platform
             </span>
             <span>
-              <Icon name="shield" size={13} /> Administrator workspace
+              <Icon name="shield" size={16} /> Administrator workspace
             </span>
           </footer>
         </main>

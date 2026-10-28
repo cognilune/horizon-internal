@@ -1,5 +1,5 @@
 "use client";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Icon } from "./Icon";
 import { planLabel } from "@/lib/catalog";
 export const number = (value: unknown, maximumFractionDigits = 1) =>
@@ -372,38 +372,77 @@ export function Breakdown({
   dimension: string;
   onSelect?: (id: string) => void;
 }) {
+  const [page, setPage] = useState(0);
+  const pageSize = 5;
+  const pageCount = Math.ceil(rows.length / pageSize);
+  useEffect(() => setPage(0), [rows]);
   if (!rows.length) return <Empty title="No recorded consumption" />;
-  const max = Math.max(1, ...rows.map((r) => Number(r.credits)));
+  const pageRows = rows.slice(page * pageSize, (page + 1) * pageSize);
+  const max = Math.max(1, ...pageRows.map((r) => Number(r.credits)));
   return (
-    <div className="breakdown">
-      {rows.map((r, i) => (
-        <button
-          className="breakdown-row"
-          key={String(r.id || i)}
-          disabled={!r.id || !onSelect}
-          onClick={() => r.id && onSelect?.(String(r.id))}
-        >
-          <span className="rank">{String(i + 1).padStart(2, "0")}</span>
-          <span className="breakdown-main">
-            <span>
-              {dimension === "plan" ? planLabel(r.name) : String(r.name)}
+    <div>
+      <div className="breakdown">
+        {pageRows.map((r, i) => (
+          <button
+            className="breakdown-row"
+            key={String(r.id || i)}
+            disabled={!r.id || !onSelect}
+            onClick={() => r.id && onSelect?.(String(r.id))}
+          >
+            <span className="rank">
+              {String(page * pageSize + i + 1).padStart(2, "0")}
             </span>
-            <span className="bar-track">
-              <i
-                style={{
-                  width: `${Math.max(1, (Number(r.credits) / max) * 100)}%`,
-                  background: colors[i % colors.length],
-                }}
-              />
+            <span className="breakdown-main">
+              <span>
+                {dimension === "plan" ? planLabel(r.name) : String(r.name)}
+              </span>
+              <span className="bar-track">
+                <i
+                  style={{
+                    width: `${Math.max(1, (Number(r.credits) / max) * 100)}%`,
+                    background: colors[i % colors.length],
+                  }}
+                />
+              </span>
             </span>
+            <span className="breakdown-value">
+              <strong>{number(r.credits)}</strong>
+              <small>credits</small>
+            </span>
+            {onSelect && <Icon name="chevron" size={14} />}
+          </button>
+        ))}
+      </div>
+      {pageCount > 1 && (
+        <nav className="breakdown-pagination" aria-label="Project pages">
+          <span>
+            {page * pageSize + 1}–{Math.min((page + 1) * pageSize, rows.length)} of{" "}
+            {rows.length}
           </span>
-          <span className="breakdown-value">
-            <strong>{number(r.credits)}</strong>
-            <small>credits</small>
-          </span>
-          {onSelect && <Icon name="chevron" size={14} />}
-        </button>
-      ))}
+          <div>
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+              disabled={page === 0}
+              aria-label="Previous projects"
+            >
+              <Icon name="chevron" size={14} />
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setPage((current) => Math.min(pageCount - 1, current + 1))
+              }
+              disabled={page >= pageCount - 1}
+              aria-label="Next projects"
+            >
+              Next
+              <Icon name="chevron" size={14} />
+            </button>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

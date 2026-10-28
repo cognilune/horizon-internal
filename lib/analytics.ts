@@ -98,7 +98,7 @@ export async function overview(query: Query, f: Filters) {
       model +
         `SELECT ${id} id,COALESCE(MAX(${name}),'Unattributed') name,SUM(x.credits)::float credits,COUNT(*)::int operations
       FROM period_usage x JOIN customers u ON u.id=x.user_id LEFT JOIN customer_workspaces w ON w.id=x.workspace_id
-      GROUP BY ${id} ORDER BY credits DESC, id LIMIT 10`,
+      GROUP BY ${id} ORDER BY credits DESC, id LIMIT 50`,
       params,
     );
   }

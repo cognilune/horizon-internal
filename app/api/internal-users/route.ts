@@ -110,3 +110,42 @@ export async function PATCH(request: Request) {
     return apiError(error);
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    sameOrigin(request);
+    const actor = await requireAdmin();
+    if (Number(request.headers.get("content-length") || 0) > 1024)
+      throw new PublicError("Invalid internal-user deletion.", 422);
+    const body = await request.json();
+    if (!body || typeof body.userId !== "string" || !body.userId)
+      throw new PublicError("Choose a valid internal user.", 422);
+    if (body.userId === actor.userId)
+      throw new PublicError("You cannot delete your own account.", 409);
+    const db = getDb(false);
+    const deleted = await db.begin(async (tx) => {
+      const [user] = await tx<{ id: string; email: string; status: string }[]>`
+        SELECT id,email,status FROM users
+        WHERE id=${body.userId} AND role='admin' FOR UPDATE`;
+      if (!user) throw new PublicError("Internal user not found.", 404);
+      if (user.status === "active") {
+        const [count] = await tx<{ total: number }[]>`
+          SELECT COUNT(*)::int total FROM users
+          WHERE role='admin' AND status='active'`;
+        if (count.total <= 1)
+          throw new PublicError("At least one active internal administrator is required.", 409);
+      }
+      const [removed] = await tx<{ id: string; email: string }[]>`
+        UPDATE users SET
+          role='viewer',status='suspended',password_hash=NULL,
+          google_subject=NULL,updated_at=NOW()
+        WHERE id=${user.id} AND role='admin'
+        RETURNING id,email`;
+      return removed;
+    });
+    await audit(actor.userId, "admin.internal_user_deleted", { userId: deleted.id });
+    return json({ deleted });
+  } catch (error) {
+    return apiError(error);
+  }
+}

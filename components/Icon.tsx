@@ -46,6 +46,7 @@ const paths: Record<string, string> = {
   trend: "m3 17 6-6 4 4 8-11 M15 4h6v6",
   empty: "M4 7 12 3l8 4v10l-8 4-8-4V7z M4 7l8 4 8-4 M12 11v10",
   dot: "M12 12h.01",
+  more: "M5 12h.01 M12 12h.01 M19 12h.01",
 };
 export function Icon({
   name,
