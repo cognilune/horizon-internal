@@ -684,6 +684,7 @@ export default function Dashboard({
               {section === n.id && <i />}
             </Link>
           ))}
+            <Link href="/kyc"><Icon name="payments"/><span>KYC Management</span></Link>
           </nav>
           <div className="sidebar-bottom">
           <span className="nav-label">PREFERENCES</span>

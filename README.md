@@ -22,11 +22,11 @@ Open `http://localhost:3100`, enter the email of an **existing active Horizon ac
 For this Occaza workspace, configuration can be explicitly imported from the existing checkout **into process memory only**:
 
 ```powershell
-node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" dev
-node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" check:data
+node scripts/with-horizon-env.mjs "../../Cognilune web" dev
+node scripts/with-horizon-env.mjs "../../Cognilune web" check:data
 ```
 
-This does not copy `.env` files or print credentials. It reads only database, session, and SMTP settings into the child process. Approve or revoke administrators from **Internal users**; an approved email must have role `admin` and status `active` at both OTP request and verification time.
+This does not copy `.env` files or print credentials. It reads only database, session, SMTP, and server-only KYC document settings into the child process. Approve or revoke administrators from **Internal users**; an approved email must have role `admin` and status `active` at both OTP request and verification time.
 
 ## Included
 
@@ -55,6 +55,8 @@ Read [docs/DATA_MAP.md](docs/DATA_MAP.md) for the exact source mapping, reconcil
 Use a dedicated private/internal deployment connected to the existing Horizon database. Set `APP_ORIGIN` to the exact HTTPS origin and `ADMIN_SESSION_SECRET` to the existing Horizon secret (at least 32 characters). Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `AUTH_FROM_EMAIL` with Horizon's email delivery settings. Secrets stay server-side. `DATABASE_URL` must have the existing authentication and audit permissions. Optionally set `ANALYTICS_DATABASE_URL` to a separate read-only role for analytics and role lookups. The shared database must include Horizon migration `075_passwordless_email_otp.sql`.
 
 All analytics run in a **read-only, repeatable-read database transaction** with a 15-second statement timeout and a bounded connection pool. OTPs are HMAC-hashed at rest, expire after five minutes, allow five verification attempts, enforce a 60-second resend delay, and use the persistent login-rate-limit table. Sign-ins, sensitive record views, and CSV exports are logged in `audit_logs`. The only writes are authentication/access bookkeeping and audit records. No plan, credit, project, payment, or workspace mutations are exposed.
+
+KYC Management (`/kyc`) uses the primary Horizon database and reads creator payout submissions written by the “Submit Your KYC” flow (`creator_payout_profiles`, migrations 081–084). Provide the same server-only `KYC_DOCUMENT_KEY_V1` as Horizon Web, plus `KYC_DOCUMENT_KEY_LEGACY` during a key rotation. Active administrators can view submitted member, business, identity, and payout details and securely open uploaded evidence. The screen refreshes automatically every three seconds while visible. Horizon Internal does not duplicate or manually re-enter submission data and does not change gateway or payout status.
 
 ```powershell
 npm run build
