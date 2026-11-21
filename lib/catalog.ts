@@ -1,5 +1,6 @@
-// Configuration, not analytics data. Source: Horizon lib/customer-billing.ts and
-// lib/customer-workspaces.ts at 1ef5f3e (2026-10-22). Keep these synchronized on price changes.
+// Configuration, not analytics data. Source: Horizon's canonical
+// lib/plan-catalog.ts. Stored workspace codes predate the public names:
+// `pro` is Plus and `business` is Pro.
 export const catalog = [
   {
     key: "workspace:free",
@@ -13,23 +14,23 @@ export const catalog = [
   },
   {
     key: "workspace:pro",
-    name: "Pro",
+    name: "Plus",
     source: "Workspace",
-    monthly: 599,
-    yearly: 5990,
+    monthly: 799,
+    yearly: 7990,
     credits: 40,
     daily: 5,
-    mapping: "Equivalent account tier: Starter",
+    mapping: "Horizon Plus",
   },
   {
     key: "workspace:business",
-    name: "Business",
+    name: "Pro",
     source: "Workspace",
-    monthly: 1499,
-    yearly: 14990,
-    credits: 100,
+    monthly: 2499,
+    yearly: 24990,
+    credits: 120,
     daily: 5,
-    mapping: "Equivalent account tier: Pro · annual prices differ",
+    mapping: "Horizon Pro",
   },
   {
     key: "workspace:enterprise",
@@ -55,8 +56,8 @@ export const catalog = [
     key: "account:starter",
     name: "Starter",
     source: "Account",
-    monthly: 599,
-    yearly: 5990,
+    monthly: 799,
+    yearly: 7990,
     credits: 40,
     daily: 5,
     mapping: "Equivalent workspace tier: Pro",
@@ -65,9 +66,9 @@ export const catalog = [
     key: "account:pro",
     name: "Pro",
     source: "Account",
-    monthly: 1499,
-    yearly: 12990,
-    credits: 100,
+    monthly: 2499,
+    yearly: 24990,
+    credits: 120,
     daily: 5,
     mapping: "Equivalent workspace tier: Business · annual prices differ",
   },

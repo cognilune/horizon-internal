@@ -23,6 +23,12 @@ const allowed = [
   "DATABASE_PUBLIC_HOST",
   "DATABASE_PUBLIC_PORT",
   "ADMIN_SESSION_SECRET",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_SECURE",
+  "SMTP_USER",
+  "SMTP_PASSWORD",
+  "AUTH_FROM_EMAIL",
 ];
 const env = {
   ...process.env,

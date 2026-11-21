@@ -12,6 +12,7 @@ export async function fixture() {
  CREATE TABLE customer_credit_wallets(owner_user_id text,daily_limit numeric,daily_remaining numeric,last_refill_on date,available_until timestamptz);
  CREATE TABLE customer_payments(id text,owner_user_id text,metadata jsonb,plan_code text,kind text,billing_interval text,amount_paise integer,currency text,status text,razorpay_order_id text,razorpay_payment_id text,created_at timestamptz,paid_at timestamptz);
  CREATE TABLE customer_workspace_payments(id text,workspace_id text,created_by text,plan_code text,billing_interval text,amount_paise integer,status text,razorpay_order_id text,razorpay_payment_id text,created_at timestamptz,paid_at timestamptz);
+ CREATE TABLE customer_workspace_subscriptions(id text,workspace_id text,owner_user_id text,provider_subscription_id text,provider_plan_id text,plan_code text,workspace_plan_code text,billing_interval text,amount_paise integer,credits numeric,status text,current_period_start timestamptz,current_period_end timestamptz,cancel_at_cycle_end boolean,scheduled_plan_code text,scheduled_billing_interval text,created_at timestamptz,updated_at timestamptz);
  CREATE TABLE customer_credit_reservations(id text,owner_user_id text,actor_user_id text,idempotency_key text,action text,amount numeric,status text,committed_at timestamptz,created_at timestamptz,project_id text);
  CREATE TABLE customer_workspace_credit_reservations(id text,workspace_id text,user_id text,idempotency_key text,action text,amount numeric,status text,committed_at timestamptz,created_at timestamptz);
  CREATE TABLE customer_credit_usage(id integer,owner_user_id text,actor_user_id text,project_id text,conversation_id text,project_name text,action text,credits numeric,created_at timestamptz,category text,metadata jsonb);
@@ -50,6 +51,9 @@ export async function fixture() {
  ('bad','bob','{"workspace_id":"w2"}','pro','plan','monthly',149900,'INR','paid','order3',NULL,'2026-10-03','2026-10-03'),
  ('refund','alice','{"workspace_id":"w1"}','starter','plan','monthly',59900,'INR','refunded','order4','provider4','2026-10-04','2026-10-04');
  INSERT INTO customer_workspace_payments VALUES ('duplicate','w1','alice','pro','monthly',59900,'paid','order1','provider1','2026-10-01','2026-10-01');
+ INSERT INTO customer_workspace_subscriptions VALUES
+ ('sub1','w1','alice','provider-sub-1','provider-plus','starter','pro','monthly',79900,40,'active','2026-10-01','2026-11-01',false,NULL,NULL,'2026-10-01','2026-10-21'),
+ ('sub2','w2','bob','provider-sub-2','provider-pro','pro','business','yearly',2499000,120,'paused','2026-08-01','2027-08-01',false,NULL,NULL,'2026-08-01','2026-10-21');
  INSERT INTO customer_workspace_access VALUES ('access1','w1','alice','owner','2026-10-01',NULL),('access2','w1','bob','editor','2026-10-02',20);
  INSERT INTO customer_workspace_invites VALUES ('i1','w1','alice','bob@example.test','editor','accepted','2026-10-01','2026-10-02','2026-10-08'),('i2','w1','alice','pending@example.test','viewer','pending','2026-10-10',NULL,'2026-10-12');
  `);

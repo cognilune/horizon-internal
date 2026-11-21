@@ -14,25 +14,39 @@ export const model = `WITH
    CASE WHEN w.status='active' AND (CASE WHEN w.plan_code='free' THEN w.free_credits_until ELSE w.plan_expires_at END)>(SELECT now FROM clock)
     THEN CASE WHEN w.last_refill_on<((SELECT now FROM clock) AT TIME ZONE 'UTC')::date THEN w.daily_limit ELSE w.daily_remaining END ELSE 0 END daily_remaining,
    CASE WHEN w.plan_code='free' THEN w.free_credits_until ELSE w.plan_expires_at END available_until,
-   0::numeric rollover_credits
+   0::numeric rollover_credits,sub.provider_subscription_id,sub.provider_subscription_status,
+   sub.current_period_start,sub.current_period_end,COALESCE(sub.cancel_at_cycle_end,false) cancel_at_cycle_end,
+   sub.scheduled_plan_code,sub.scheduled_billing_interval
   FROM customer_workspaces w JOIN customers c ON c.id=w.owner_user_id
+  LEFT JOIN LATERAL (
+   SELECT provider_subscription_id,status provider_subscription_status,current_period_start,current_period_end,
+    cancel_at_cycle_end,scheduled_plan_code,scheduled_billing_interval
+   FROM customer_workspace_subscriptions WHERE workspace_id=w.id ORDER BY created_at DESC,id DESC LIMIT 1
+  ) sub ON true
   WHERE to_jsonb(w)->>'deleted_at' IS NULL
   UNION ALL
   SELECT 'account:'||c.id,c.id,c.name||' (legacy account)',COALESCE(b.plan_code,'free'),'account:'||COALESCE(b.plan_code,'free'),
    'account',b.billing_interval,c.status,c.created_at,b.updated_at,b.plan_started_at,b.plan_expires_at,
    COALESCE(w.daily_limit,0),COALESCE(b.subscription_credits,0),COALESCE(b.topup_credits,0),
    CASE WHEN c.status='active' AND w.available_until>(SELECT now FROM clock) THEN CASE WHEN w.last_refill_on<((SELECT now FROM clock) AT TIME ZONE 'UTC')::date THEN w.daily_limit ELSE w.daily_remaining END ELSE 0 END,
-   w.available_until,CASE WHEN (to_jsonb(b)->>'rollover_expires_at')::timestamptz>(SELECT now FROM clock) THEN COALESCE((to_jsonb(b)->>'rollover_credits')::numeric,0) ELSE 0 END
+   w.available_until,CASE WHEN (to_jsonb(b)->>'rollover_expires_at')::timestamptz>(SELECT now FROM clock) THEN COALESCE((to_jsonb(b)->>'rollover_credits')::numeric,0) ELSE 0 END,
+   NULL::text,NULL::text,NULL::timestamptz,NULL::timestamptz,false,NULL::text,NULL::text
   FROM customers c LEFT JOIN customer_billing_accounts b ON b.owner_user_id=c.id LEFT JOIN customer_credit_wallets w ON w.owner_user_id=c.id
   WHERE NOT EXISTS(SELECT 1 FROM customer_workspaces ws WHERE ws.owner_user_id=c.id)
  ),
  subscriptions AS (
-  SELECT w.*,CASE WHEN w.plan_code='free' THEN 'free' WHEN w.status='pending_payment' THEN 'pending'
-   WHEN w.status<>'active' THEN 'inactive' WHEN w.plan_expires_at IS NULL THEN 'unknown'
+  SELECT w.*,CASE WHEN w.plan_code='free' THEN 'free'
+   WHEN w.status='pending_payment' THEN 'pending' WHEN w.status<>'active' THEN 'inactive'
+   WHEN w.source='workspace' AND w.provider_subscription_status IS NOT NULL THEN CASE
+    WHEN w.provider_subscription_status='active' AND (w.current_period_end IS NULL OR w.current_period_end>(SELECT now FROM clock)) THEN 'active'
+    WHEN w.provider_subscription_status IN ('created','authenticated','pending') THEN 'pending'
+    WHEN w.provider_subscription_status IN ('completed','expired') OR w.current_period_end<=(SELECT now FROM clock) THEN 'expired'
+    ELSE 'inactive' END
+   WHEN w.plan_expires_at IS NULL THEN 'unknown'
    WHEN w.plan_expires_at<=(SELECT now FROM clock) THEN 'expired' ELSE 'active' END subscription_status,
    CASE WHEN w.status='active' THEN w.daily_remaining+w.subscription_credits+w.topup_credits+w.rollover_credits ELSE 0 END remaining,
    CASE WHEN w.source='workspace' AND w.plan_code='pro' OR w.source='account' AND w.plan_code='starter' THEN 40
-    WHEN w.source='workspace' AND w.plan_code='business' OR w.source='account' AND w.plan_code='pro' THEN 100
+    WHEN w.source='workspace' AND w.plan_code='business' OR w.source='account' AND w.plan_code='pro' THEN 120
     WHEN w.plan_code='free' THEN 0 ELSE NULL END plan_allowance
   FROM wallets w
  ),
@@ -154,6 +168,14 @@ export const tableQueries = {
   (SELECT COALESCE(SUM(p.amount_paise),0)::float/100 FROM scoped_payments p WHERE p.user_id=c.id AND p.verified) total_paid
  FROM scoped_users c`,
   subscriptions: `SELECT s.id,s.user_id,u.name owner,u.email,s.name,s.plan_key plan,s.source,s.billing_interval,s.subscription_status status,
+  CASE WHEN s.provider_subscription_status IS NOT NULL THEN s.provider_subscription_status
+   WHEN s.source='workspace' AND s.plan_code<>'free' THEN s.subscription_status||'_entitlement'
+   ELSE s.subscription_status END subscription_display_status,
+  CASE WHEN s.provider_subscription_status IS NOT NULL THEN 'Provider subscription'
+   WHEN s.source='workspace' AND s.plan_code<>'free' THEN 'Plan entitlement'
+   WHEN s.source='workspace' THEN 'Free plan' ELSE 'Legacy account' END subscription_kind,
+  s.provider_subscription_id,s.provider_subscription_status,s.current_period_start,s.current_period_end,s.cancel_at_cycle_end,
+  s.scheduled_plan_code,s.scheduled_billing_interval,
   s.plan_started_at created_at,s.plan_expires_at expires_at,s.available_until,s.daily_limit,s.plan_allowance,s.remaining::float remaining,
   s.daily_remaining::float daily_remaining,s.subscription_credits::float plan_balance,s.topup_credits::float topup_balance,s.rollover_credits::float rollover_balance,
   (date_trunc('day',(SELECT now FROM clock) AT TIME ZONE 'UTC')+interval '1 day') AT TIME ZONE 'UTC' daily_reset_at,

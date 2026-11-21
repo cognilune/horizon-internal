@@ -16,6 +16,7 @@ import {
   type DataRow,
 } from "./Charts";
 import DataTable from "./DataTable";
+import DatabaseManagement, { DatabaseOverview } from "./DatabaseManagement";
 import DetailDrawer from "./DetailDrawer";
 import InternalUsers from "./InternalUsers";
 import { GlobalSearch, EntityPicker } from "./Search";
@@ -70,6 +71,11 @@ const navigation = [
     description: "Turn platform activity into a clearer perspective.",
   },
   {
+    id: "database",
+    label: "Database",
+    description: "Review database usage and manage project access.",
+  },
+  {
     id: "settings",
     label: "Settings",
     description:
@@ -94,14 +100,12 @@ const periods = [
   { value: "custom", label: "Custom range" },
 ];
 
-const visiblePlanNames = new Map([
-  ["workspace:free", "Free"],
-  ["workspace:pro", "Plus"],
-  ["workspace:business", "Pro"],
-]);
 const visiblePlans = catalog
-  .filter((plan) => visiblePlanNames.has(plan.key))
-  .map((plan) => ({ ...plan, name: visiblePlanNames.get(plan.key)! }));
+  .filter((plan) =>
+    ["workspace:free", "workspace:pro", "workspace:business"].includes(
+      plan.key,
+    ),
+  );
 
 function PeriodPicker({
   value,
@@ -405,6 +409,9 @@ export default function Dashboard({
     ),
     [creditTab, setCreditTab] = useState("credits"),
     [workspaceTab, setWorkspaceTab] = useState("workspaces");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
+    "monthly",
+  );
   const [customStart, setCustomStart] = useState(p.get("start") || ""),
     [customEnd, setCustomEnd] = useState(p.get("end") || ""),
     [custom, setCustom] = useState(false),
@@ -491,6 +498,7 @@ export default function Dashboard({
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
   }, [profile]);
   useEffect(() => {
+    if (section === "database") return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -854,7 +862,7 @@ export default function Dashboard({
                   <Icon name="internal-users" size={18} /> Add user
                 </button>
               )}
-              {!["settings", "internal-users"].includes(section) && (
+              {!["settings", "internal-users", "database"].includes(section) && (
                 <>
                   <button
                     className={`button icon-only ${loading ? "refreshing" : ""}`}
@@ -942,7 +950,7 @@ export default function Dashboard({
               {rangeError && <span role="alert">{rangeError}</span>}
             </form>
           )}
-          {!["settings", "internal-users"].includes(section) && (
+          {!["settings", "internal-users", "database"].includes(section) && (
             <>
               <div className="context-line">
                 <span className={`live-dot ${error ? "offline" : ""}`} />
@@ -1028,7 +1036,7 @@ export default function Dashboard({
               </button>
             </div>
           )}
-          {loading && !data ? (
+          {section === "database" ? <DatabaseManagement refresh={refresh} /> : loading && !data ? (
             <div
               className={`dashboard-skeleton dashboard-skeleton-${section}`}
               role="status"
@@ -1120,6 +1128,10 @@ export default function Dashboard({
                         target: "projects",
                       },
                     ])}
+                    <DatabaseOverview
+                      refresh={refresh}
+                      onOpen={() => navigate("database")}
+                    />
                     <div className="charts-grid">
                       <Panel
                         title={
@@ -1197,6 +1209,11 @@ export default function Dashboard({
                           label: "Active paid entitlements",
                           key: "active_subscriptions",
                           icon: "plans",
+                        },
+                        {
+                          label: "Total active subscriptions",
+                          key: "total_active_subscriptions",
+                          icon: "check",
                         },
                         {
                           label: "Invitations sent · all time",
@@ -1293,6 +1310,12 @@ export default function Dashboard({
                         note: currentNote,
                       },
                       {
+                        label: "Total active subscriptions",
+                        key: "total_active_subscriptions",
+                        icon: "check",
+                        note: "Provider subscriptions · current snapshot",
+                      },
+                      {
                         label: "Active paying owners",
                         key: "paying_customers",
                         icon: "users",
@@ -1305,13 +1328,26 @@ export default function Dashboard({
                         currency: true,
                         note: "Confirmed customer and workspace payments",
                       },
-                      {
-                        label: "MRR",
-                        key: "mrr",
-                        icon: "analytics",
-                        note: "Recurring collection not confirmed",
-                      },
                     ])}
+                    <div className="plan-billing-toolbar">
+                      <div
+                        className="billing-switcher"
+                        role="group"
+                        aria-label="Plan billing cycle"
+                      >
+                        {(["monthly", "yearly"] as const).map((cycle) => (
+                          <button
+                            type="button"
+                            key={cycle}
+                            className={billingCycle === cycle ? "selected" : ""}
+                            aria-pressed={billingCycle === cycle}
+                            onClick={() => setBillingCycle(cycle)}
+                          >
+                            {cycle === "monthly" ? "Monthly" : "Yearly"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="plan-cards">
                       {visiblePlans
                         .filter(
@@ -1337,17 +1373,23 @@ export default function Dashboard({
                               </div>
                               <h2>{plan.name}</h2>
                               <p className="plan-price">
-                                {plan.monthly === null
+                                {plan[billingCycle] === null
                                   ? "Custom"
-                                  : money(plan.monthly)}
+                                  : money(plan[billingCycle])}
                                 <small>
-                                  {plan.monthly !== null ? " / month" : ""}
+                                  {plan[billingCycle] !== null
+                                    ? billingCycle === "monthly"
+                                      ? " / month"
+                                      : " / year"
+                                    : ""}
                                 </small>
                               </p>
                               <p className="plan-annual">
-                                {plan.yearly === null
+                                {plan[billingCycle] === null
                                   ? "Custom billing agreement"
-                                  : `${money(plan.yearly)} billed yearly`}
+                                  : billingCycle === "monthly"
+                                    ? "Billed monthly"
+                                    : `${money(Number(plan.yearly) / 12)} monthly equivalent · billed yearly`}
                               </p>
                               <div className="plan-quota">
                                 <Icon name="credits" size={15} />
@@ -1406,8 +1448,9 @@ export default function Dashboard({
                         })}
                     </div>
                     <p className="data-note">
-                      Prices come from the existing Horizon configuration, not
-                      revenue estimates. Cancellation history is unavailable.
+                      Plans use Horizon&apos;s canonical commercial catalog.
+                      Workspace subscription status comes from the latest
+                      provider record.
                     </p>
                     <DataTable
                       resource="subscriptions"

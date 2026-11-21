@@ -23,6 +23,9 @@ export async function overview(query: Query, f: Filters) {
    (SELECT COUNT(*)::int FROM scoped_invites WHERE created_at >= $2 AND created_at < $3) new_invitations,
    (SELECT COUNT(*)::int FROM scoped_invites WHERE created_at >= $2 AND created_at < $3 AND status='accepted') accepted_invitations,
    (SELECT COUNT(*)::int FROM scoped_wallets WHERE subscription_status='active') active_subscriptions,
+   (SELECT COUNT(*)::int FROM scoped_wallets
+    WHERE provider_subscription_status='active'
+      AND (current_period_end IS NULL OR current_period_end>$1)) total_active_subscriptions,
    (SELECT COUNT(DISTINCT user_id)::int FROM scoped_wallets WHERE subscription_status='active') paying_customers,
    (SELECT COUNT(*)::int FROM scoped_users c WHERE NOT EXISTS(SELECT 1 FROM scoped_wallets s WHERE s.user_id=c.id AND s.subscription_status='active')) free_or_expired_users,
    (SELECT COALESCE(SUM(remaining),0)::float FROM scoped_wallets) remaining,

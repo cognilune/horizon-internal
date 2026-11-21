@@ -1,5 +1,11 @@
 # Horizon Internal
 
+### Database administration
+
+The `/database` page reads the primary Horizon database configured in `DATABASE_URL`. For each environment, apply platform migrations `098_internal_database_controls.sql` and `099_internal_database_inventory.sql`, then roll out the updated Horizon web service and all database workers before exposing the new Horizon Internal release. Old runtime replicas do not enforce the new flag. If the internal app uses a separate database role from the migration owner, grant that trusted server role `SELECT` on `public.internal_database_inventory` and `public.internal_database_actions` and `EXECUTE` on `public.internal_set_database_access(text,text,text,text,boolean,text)`. Keep execution private to the internal administration service. The transition function checks the signed-in administrator’s current account and writes the action to `public.internal_database_actions` atomically.
+
+Usage cards count distinct users who selected a database or connected PostgreSQL, using the project owner for legacy records without a known creator, including blocked and disconnected records. Projects with an external connection use that connection as their displayed source. Static projects with no recorded sample selection or sample records are omitted. Creation-date filters use UTC.
+
 The internal administration and analytics application for the existing Horizon platform. Built with Next.js 16, React 19, TypeScript, and PostgreSQL. All production analytics come from the existing database; there is no demo mode, seed operation, or static metrics fallback.
 
 ## Run locally
@@ -7,11 +13,11 @@ The internal administration and analytics application for the existing Horizon p
 ```powershell
 npm ci
 Copy-Item .env.example .env.local
-# Configure DATABASE_URL, ADMIN_SESSION_SECRET, and APP_ORIGIN.
+# Configure DATABASE_URL, ADMIN_SESSION_SECRET, APP_ORIGIN, and SMTP settings.
 npm run dev
 ```
 
-Open `http://localhost:3100` and use an **existing active Horizon account with role `admin`**. Customer, editor, viewer, suspended, expired, or tampered sessions cannot access the application. No development authentication bypass is supported.
+Open `http://localhost:3100`, enter the email of an **existing active Horizon account with role `admin`**, and verify the six-digit code delivered by email. Customer, editor, viewer, suspended, removed, or tampered sessions cannot access the application. No development authentication bypass is supported.
 
 For this Occaza workspace, configuration can be explicitly imported from the existing checkout **into process memory only**:
 
@@ -20,7 +26,7 @@ node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" dev
 node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" check:data
 ```
 
-This does not copy `.env` files or print credentials. It reads only database connection settings and the shared session secret. Provision or recover administrator accounts through the existing Horizon administrator workflow; this dashboard does not create administrators.
+This does not copy `.env` files or print credentials. It reads only database, session, and SMTP settings into the child process. Approve or revoke administrators from **Internal users**; an approved email must have role `admin` and status `active` at both OTP request and verification time.
 
 ## Included
 
@@ -29,7 +35,7 @@ This does not copy `.env` files or print credentials. It reads only database con
 - Cross-record drill-downs, owner balances, workspace members/invitations, purchase history, and operation history.
 - Daily, weekly, and monthly charts, keyboard-accessible chart data tables, configurable 30-second refresh, and payment alerts.
 - Desktop, tablet, and mobile navigation, focus-managed dialogs, loading/empty/error states, and reduced-motion support.
-- Admin authentication compatible with Horizon's existing password and session formats; role and account status are rechecked in PostgreSQL on **every** API request.
+- Passwordless administrator authentication with a six-digit, five-minute email OTP, resend/attempt throttles, and Horizon-compatible signed sessions. Role and account status are rechecked in PostgreSQL on **every** API request.
 
 ## Data rules
 
@@ -46,9 +52,9 @@ Read [docs/DATA_MAP.md](docs/DATA_MAP.md) for the exact source mapping, reconcil
 
 ## Security and deployment
 
-Use a dedicated private/internal deployment connected to the existing Horizon database. Set `APP_ORIGIN` to the exact HTTPS origin and `ADMIN_SESSION_SECRET` to the existing Horizon secret (at least 32 characters). Secrets stay server-side. `DATABASE_URL` must have the existing authentication and audit permissions. Optionally set `ANALYTICS_DATABASE_URL` to a separate read-only role for analytics and role lookups.
+Use a dedicated private/internal deployment connected to the existing Horizon database. Set `APP_ORIGIN` to the exact HTTPS origin and `ADMIN_SESSION_SECRET` to the existing Horizon secret (at least 32 characters). Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `AUTH_FROM_EMAIL` with Horizon's email delivery settings. Secrets stay server-side. `DATABASE_URL` must have the existing authentication and audit permissions. Optionally set `ANALYTICS_DATABASE_URL` to a separate read-only role for analytics and role lookups. The shared database must include Horizon migration `075_passwordless_email_otp.sql`.
 
-All analytics run in a **read-only, repeatable-read database transaction** with a 15-second statement timeout and a bounded connection pool. Sign-in uses the existing persistent login-rate-limit table and scrypt hashes. Sign-ins, sensitive record views, and CSV exports are logged in the existing `audit_logs` table. The only writes are authentication bookkeeping and audit records. No plan, status, credit, project, payment, or workspace mutations are exposed.
+All analytics run in a **read-only, repeatable-read database transaction** with a 15-second statement timeout and a bounded connection pool. OTPs are HMAC-hashed at rest, expire after five minutes, allow five verification attempts, enforce a 60-second resend delay, and use the persistent login-rate-limit table. Sign-ins, sensitive record views, and CSV exports are logged in `audit_logs`. The only writes are authentication/access bookkeeping and audit records. No plan, credit, project, payment, or workspace mutations are exposed.
 
 ```powershell
 npm run build

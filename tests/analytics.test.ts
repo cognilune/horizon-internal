@@ -99,6 +99,33 @@ test("only verified purchasers count as ever purchased", async () => {
   const plan = data.purchases.find((p) => p.key === "account:pro");
   assert.equal(plan?.ever_purchased, 0);
 });
+test("workspace subscription rows use the latest provider status", async () => {
+  await db.pg.exec("BEGIN");
+  try {
+    await db.pg.exec(`INSERT INTO customer_workspaces
+      (id,name,owner_user_id,plan_code,billing_interval,status,daily_limit,daily_remaining,last_refill_on,subscription_credits,topup_credits,free_credits_until,plan_started_at,plan_expires_at,created_at,updated_at)
+      VALUES ('w3','Older paid workspace','alice','business','monthly','active',5,5,'2026-10-22',120,0,NULL,'2026-10-01','2026-12-01','2026-10-01','2026-10-21')`);
+    const result = await table(db.query, "subscriptions", filters(), {
+      allDates: true,
+    });
+    const active = result.rows.find((row) => row.id === "w1");
+    const paused = result.rows.find((row) => row.id === "w2");
+    const entitlement = result.rows.find((row) => row.id === "w3");
+    assert.equal(active?.status, "active");
+    assert.equal(active?.provider_subscription_status, "active");
+    assert.equal(active?.subscription_display_status, "active");
+    assert.equal(active?.subscription_kind, "Provider subscription");
+    assert.equal(active?.provider_subscription_id, "provider-sub-1");
+    assert.equal(paused?.status, "inactive");
+    assert.equal(paused?.provider_subscription_status, "paused");
+    assert.equal(entitlement?.status, "active");
+    assert.equal(entitlement?.provider_subscription_status, null);
+    assert.equal(entitlement?.subscription_display_status, "active_entitlement");
+    assert.equal(entitlement?.subscription_kind, "Plan entitlement");
+  } finally {
+    await db.pg.exec("ROLLBACK");
+  }
+});
 test("a source paid flag without provider confirmation is never displayed as paid", async () => {
   const result = await table(
     db.query,

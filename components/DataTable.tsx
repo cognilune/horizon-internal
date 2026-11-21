@@ -6,7 +6,7 @@ import { planLabel, sortableColumns } from "@/lib/catalog";
 type Column = {
   key: string;
   label: string;
-  type?: "date" | "number" | "money" | "badge" | "plan" | "person" | "boolean" | "url";
+  type?: "date" | "number" | "money" | "badge" | "plan" | "person" | "boolean" | "yesno" | "url";
 };
 const c = (key: string, label: string, type?: Column["type"]): Column => ({
   key,
@@ -35,21 +35,16 @@ export const columns: Record<string, Column[]> = {
     c("name", "Workspace / account"),
     c("owner", "Owner", "person"),
     c("plan", "Plan", "plan"),
-    c("status", "Status", "badge"),
+    c("status", "Access status", "badge"),
+    c("subscription_display_status", "Subscription / entitlement", "badge"),
+    c("subscription_kind", "Record type"),
     c("billing_interval", "Billing cycle"),
-    c("remaining", "Balance now", "number"),
-    c("plan_allowance", "Plan credits", "number"),
-    c("daily_limit", "Daily credits", "number"),
-    c("daily_remaining", "Daily balance", "number"),
-    c("plan_balance", "Plan balance", "number"),
-    c("topup_balance", "Top-up balance", "number"),
-    c("rollover_balance", "Rollover balance", "number"),
-    c("daily_reset_at", "Next daily reset", "date"),
-    c("available_until", "Daily eligibility ends", "date"),
-    c("created_at", "Plan started", "date"),
-    c("expires_at", "Expires", "date"),
+    c("current_period_start", "Current period started", "date"),
+    c("current_period_end", "Current period ends", "date"),
+    c("cancel_at_cycle_end", "Cancels at cycle end", "yesno"),
+    c("expires_at", "Plan access expires", "date"),
     c("confirmed_purchases", "Confirmed purchases", "number"),
-    c("source", "Source"),
+    c("provider_subscription_id", "Provider subscription ID"),
     c("id", "ID"),
   ],
   workspaces: [
@@ -224,6 +219,8 @@ export function Cell({ row, column }: { row: DataRow; column: Column }) {
         {value ? "Verified" : "Unconfirmed"}
       </span>
     );
+  if (column.type === "yesno")
+    return <span className={value ? "verified" : "muted"}>{value ? "Yes" : "No"}</span>;
   if (
     column.type === "url" &&
     (/^https?:\/\//i.test(String(value)) || String(value).startsWith("/"))
