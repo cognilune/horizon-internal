@@ -94,7 +94,11 @@ export function createInternalOtpAuth(options: {
     await limit(`internal-otp:email:${email}`, 8);
 
     const [user] = await db.query<Admin>(
-      "SELECT id,email,name,role,status FROM users WHERE lower(email)=$1 LIMIT 1",
+      `SELECT u.id,u.email,u.name,
+       CASE WHEN a.status='active' THEN 'admin' ELSE u.role END role,
+       CASE WHEN a.status='active' AND u.status='active' THEN 'active' ELSE 'suspended' END status
+       FROM users u LEFT JOIN internal_admin_access a ON a.user_id=u.id
+       WHERE lower(u.email)=$1 LIMIT 1`,
       [email],
     );
     // Do not reveal which email addresses are on the internal allowlist.
@@ -184,7 +188,11 @@ export function createInternalOtpAuth(options: {
         return { error: "The code is incorrect. Please try again." } as const;
       }
       const [user] = await tx.query<Admin>(
-        "SELECT id,email,name,role,status FROM users WHERE id=$1 AND lower(email)=$2 FOR UPDATE",
+        `SELECT u.id,u.email,u.name,
+         CASE WHEN a.status='active' THEN 'admin' ELSE u.role END role,
+         CASE WHEN a.status='active' AND u.status='active' THEN 'active' ELSE 'suspended' END status
+         FROM users u LEFT JOIN internal_admin_access a ON a.user_id=u.id
+         WHERE u.id=$1 AND lower(u.email)=$2 FOR UPDATE OF u`,
         [challenge.user_id, email],
       );
       if (!user || user.role !== "admin" || user.status !== "active") {

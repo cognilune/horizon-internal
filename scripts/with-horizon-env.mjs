@@ -3,7 +3,7 @@ import path from "node:path";
 import { parseEnv } from "node:util";
 import { spawn } from "node:child_process";
 // Explicit opt-in local configuration import. Secrets only enter child-process memory.
-// Usage: node scripts/with-horizon-env.mjs "../../Cognilune web" dev
+// Usage: node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" dev
 const [source, command = "dev"] = process.argv.slice(2);
 if (!source || !["dev", "check:data", "start"].includes(command))
   throw new Error(

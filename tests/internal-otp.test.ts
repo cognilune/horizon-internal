@@ -27,9 +27,13 @@ async function setup() {
       attempts integer NOT NULL DEFAULT 0,updated_at timestamptz NOT NULL DEFAULT NOW(),
       PRIMARY KEY(email,purpose)
     );
+    CREATE TABLE internal_admin_access(
+      user_id text PRIMARY KEY REFERENCES users(id),status text NOT NULL
+    );
     INSERT INTO users VALUES
       ('admin','Approved Admin','admin@example.test','admin','active',NULL,NULL),
       ('customer','Customer','customer@example.test','customer','active',NULL,NULL);
+    INSERT INTO internal_admin_access VALUES ('admin','active');
   `);
   const adapt = (connection: { query: PGlite["query"] }): OtpQuery => ({
     query: async <T extends Record<string, unknown>>(sql: string, params: unknown[] = []) =>
@@ -64,6 +68,21 @@ test("an approved active administrator can request and consume one OTP", async (
     auth.verifyCode({ email: message.email, otp: message.otp }),
     (error: unknown) => error instanceof OtpError && error.status === 401,
   );
+  await pg.close();
+});
+
+test("a customer with internal access can sign in without changing customer role", async () => {
+  const { pg, auth, delivered } = await setup();
+  await pg.query("INSERT INTO internal_admin_access VALUES ('customer','active')");
+  await auth.requestCode({ email: "customer@example.test" }, "127.0.0.4");
+  const message = delivered();
+  assert.ok(message);
+  const user = await auth.verifyCode({ email: message.email, otp: message.otp });
+  assert.equal(user.id, "customer");
+  const result = await pg.query<{ role: string }>(
+    "SELECT role FROM users WHERE id='customer'",
+  );
+  assert.equal(result.rows[0]?.role, "customer");
   await pg.close();
 });
 

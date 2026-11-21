@@ -22,8 +22,8 @@ Open `http://localhost:3100`, enter the email of an **existing active Horizon ac
 For this Occaza workspace, configuration can be explicitly imported from the existing checkout **into process memory only**:
 
 ```powershell
-node scripts/with-horizon-env.mjs "../../Cognilune web" dev
-node scripts/with-horizon-env.mjs "../../Cognilune web" check:data
+node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" dev
+node scripts/with-horizon-env.mjs "../cognilune website/cognilune-websites" check:data
 ```
 
 This does not copy `.env` files or print credentials. It reads only database, session, SMTP, and server-only KYC document settings into the child process. Approve or revoke administrators from **Internal users**; an approved email must have role `admin` and status `active` at both OTP request and verification time.

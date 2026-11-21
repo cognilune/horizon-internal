@@ -38,7 +38,9 @@ export async function GET(request: Request) {
         "isolation level repeatable read read only",
         async (tx) => {
           const [admin] =
-            await tx`SELECT id FROM users WHERE id=${session.userId} AND role='admin' AND status='active'`;
+            await tx`SELECT u.id FROM users u
+              JOIN internal_admin_access a ON a.user_id=u.id
+              WHERE u.id=${session.userId} AND u.status='active' AND a.status='active'`;
           if (!admin)
             throw new PublicError("Administrator access required.", 403);
           if (p.get("view") === "summary") {

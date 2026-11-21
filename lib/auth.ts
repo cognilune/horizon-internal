@@ -28,7 +28,11 @@ export async function requireAdmin(): Promise<Session> {
       process.env.ADMIN_SESSION_SECRET || "",
       async (id) => {
         const [user] =
-          await getDb()`SELECT name,email,role,status FROM users WHERE id=${id}`;
+          await getDb()`SELECT u.name,u.email,
+            CASE WHEN a.status='active' THEN 'admin' ELSE u.role END role,
+            CASE WHEN a.status='active' AND u.status='active' THEN 'active' ELSE 'suspended' END status
+            FROM users u LEFT JOIN internal_admin_access a ON a.user_id=u.id
+            WHERE u.id=${id}`;
         return user
           ? {
               name: String(user.name),
@@ -72,7 +76,9 @@ export async function checkCredentials(email: string, password: string) {
       429,
     );
   const [user] =
-    await db`SELECT id,email,name,role,status,password_hash FROM users WHERE lower(email)=${email.toLowerCase()} LIMIT 1`;
+    await db`SELECT u.id,u.email,u.name,u.status,u.password_hash,a.status admin_status
+      FROM users u LEFT JOIN internal_admin_access a ON a.user_id=u.id
+      WHERE lower(u.email)=${email.toLowerCase()} LIMIT 1`;
   const [algorithm, salt, stored] = String(user?.password_hash || "").split(
     "$",
   );
@@ -86,7 +92,7 @@ export async function checkCredentials(email: string, password: string) {
     algorithm !== "scrypt" ||
     expected.length !== actual.length ||
     !timingSafeEqual(actual, expected) ||
-    user?.role !== "admin" ||
+    user?.admin_status !== "active" ||
     user?.status !== "active"
   )
     throw new PublicError(

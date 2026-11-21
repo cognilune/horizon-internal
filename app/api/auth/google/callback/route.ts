@@ -84,9 +84,12 @@ export async function GET(request: NextRequest) {
       name: string;
       role: string;
       status: string;
+      admin_status: string | null;
       google_subject: string | null;
-    }[]>`SELECT id,email,name,role,status,google_subject FROM users WHERE lower(email)=${email} LIMIT 1`;
-    if (!user || user.role !== "admin")
+    }[]>`SELECT u.id,u.email,u.name,u.role,u.status,a.status admin_status,u.google_subject
+      FROM users u LEFT JOIN internal_admin_access a ON a.user_id=u.id
+      WHERE lower(u.email)=${email} LIMIT 1`;
+    if (!user || user.admin_status !== "active")
       return loginError(
         request,
         "This Google account does not have Horizon administrator access.",
