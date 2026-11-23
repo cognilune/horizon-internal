@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { preparePreviewContent, servePreviewMedia } from "../lib/project-preview";
+import {
+  preparePreviewContent,
+  previewBuildAssetSlot,
+  servePreviewBuildAsset,
+  servePreviewMedia,
+} from "../lib/project-preview";
+import { signInternalPreviewAsset } from "../lib/internal-preview-auth";
 import { renderPreviewContent } from "../lib/preview-document";
 
 test("preview embeds images, styles and scripts without cookie-dependent subrequests", async t => {
@@ -34,6 +40,73 @@ test("preview embeds images, styles and scripts without cookie-dependent subrequ
   assert.match(html, /Object\.defineProperty\(window,name/);
   assert.doesNotMatch(html, /<link[^>]*stylesheet|<script[^>]*src=/);
   assert.equal(preparePreviewContent("__PROJECT_ID__", "assets/app.js", "gym"), "gym");
+});
+
+test("preview routes generated build assets through the authenticated admin path", () => {
+  const slot = "3d313331-e5f2-479e-9620-e4a78e0bfd8b";
+  const html = preparePreviewContent(
+    `<img src="/__horizon_assets/${slot}.png"><style>.hero{background:url('/__horizon_assets/${slot}.png')}</style>`,
+    "index.html",
+    "gym",
+  );
+  assert.equal(previewBuildAssetSlot(`__horizon_assets/${slot}.png`), slot);
+  assert.match(
+    html,
+    new RegExp(`/api/admin/project-preview/gym/__horizon_assets/${slot}\\.png`),
+  );
+  assert.equal((html.match(/\/api\/admin\/project-preview\/gym\/__horizon_assets\//g) || []).length, 2);
+});
+
+test("build asset proxy signs a bounded request and does not forward admin credentials", async t => {
+  const previousSecret = process.env.ADMIN_SESSION_SECRET;
+  const previousOrigin = process.env.HORIZON_PUBLIC_ORIGIN;
+  process.env.ADMIN_SESSION_SECRET = "internal-preview-test-secret-that-is-long-enough";
+  process.env.HORIZON_PUBLIC_ORIGIN = "https://horizon-staging.example";
+  t.after(() => {
+    if (previousSecret === undefined) delete process.env.ADMIN_SESSION_SECRET;
+    else process.env.ADMIN_SESSION_SECRET = previousSecret;
+    if (previousOrigin === undefined) delete process.env.HORIZON_PUBLIC_ORIGIN;
+    else process.env.HORIZON_PUBLIC_ORIGIN = previousOrigin;
+  });
+  const slot = "3d313331-e5f2-479e-9620-e4a78e0bfd8b";
+  const bytes = new Uint8Array([137, 80, 78, 71]);
+  t.mock.method(globalThis, "fetch", async (url: URL, init: RequestInit) => {
+    assert.equal(
+      String(url),
+      `https://horizon-staging.example/api/internal/project-preview-assets/gym/${slot}`,
+    );
+    const headers = new Headers(init.headers);
+    assert.equal(headers.get("cookie"), null);
+    assert.equal(headers.get("authorization"), null);
+    assert.equal(headers.get("range"), "bytes=0-3");
+    const timestamp = Number(headers.get("x-horizon-internal-timestamp"));
+    assert.equal(
+      headers.get("x-horizon-internal-signature"),
+      signInternalPreviewAsset(
+        process.env.ADMIN_SESSION_SECRET!,
+        "gym",
+        slot,
+        timestamp,
+      ),
+    );
+    return new Response(bytes, {
+      headers: { "content-type": "image/png", etag: '"asset"' },
+    });
+  });
+  const response = await servePreviewBuildAsset(
+    "gym",
+    slot,
+    new Request("https://internal.example/preview", {
+      headers: {
+        cookie: "horizon_internal_session=secret",
+        authorization: "Bearer secret",
+        range: "bytes=0-3",
+      },
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/png");
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
 });
 
 test("preview rejects non-image upstream bodies", async t => {

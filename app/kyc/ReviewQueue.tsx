@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/Icon";
 
 type Row = {
   id: string;
@@ -143,7 +144,7 @@ function PayoutRecord({ row }: { row: Row }) {
           <span className="kyc-details-toggle">
             <span className="kyc-show">View details</span>
             <span className="kyc-hide">Hide details</span>
-            <span className="kyc-chevron" aria-hidden="true">⌄</span>
+            <Icon name="down" size={14} className="kyc-chevron" />
           </span>
         </summary>
         <div className="kyc-details">

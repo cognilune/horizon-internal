@@ -15,6 +15,7 @@ const paths: Record<string, string> = {
     "M3 7V5a2 2 0 0 1 2-2h5l2 4h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z",
   credits: "m13 2-9 12h7l-1 8 10-12h-7l1-8z",
   payments: "M3 5h18v14H3z M3 9h18 M7 15h3",
+  kyc: "M3 5h18v14H3z M3 9h18 M7 15h3",
   analytics: "M4 3v18h18 M8 16v-5 M13 16V7 M18 16v-9",
   settings:
     "m12 8 3 2v4l-3 2-3-2v-4l3-2z M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1 1-3z",

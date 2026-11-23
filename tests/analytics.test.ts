@@ -18,6 +18,7 @@ test("overview reconciles wallets, reservations and provider-confirmed payments"
   assert.equal(data.summary.users, 3);
   assert.equal(data.summary.active_users, 2);
   assert.equal(data.summary.projects, 2);
+  assert.equal(data.summary.published_websites, 1);
   assert.equal(
     data.summary.credits,
     9,

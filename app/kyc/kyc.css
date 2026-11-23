@@ -1,15 +1,3 @@
-.kyc-review {
-  max-width: 1160px;
-  margin: auto;
-  padding: 40px 28px 80px;
-  font-size: 14px;
-}
-.kyc-back { color: #686572; font-size: 13px; }
-.kyc-back:hover { color: var(--purple); }
-.kyc-heading { margin: 32px 0 28px; }
-.kyc-heading .eyebrow { font-size: 10px; letter-spacing: 1.6px; }
-.kyc-heading h1 { margin: 8px 0; font-size: 30px; letter-spacing: -.8px; }
-.kyc-heading > p:last-child { color: #686572; font-size: 14px; }
 .kyc-list { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
 .kyc-list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 20px 24px; }
 .kyc-list-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -36,8 +24,8 @@
 .kyc-status.status-active, .kyc-status.status-verified { color: #216b50; background: #e9f7ef; }
 .kyc-status.status-rejected, .kyc-status.status-suspended { color: #9b2f42; background: #fff0f2; }
 .kyc-status.status-review, .kyc-status.status-pending, .kyc-status.status-saved { color: #805b16; background: #fff7df; }
-.kyc-details-toggle { display: flex; justify-content: flex-end; align-items: center; gap: 8px; color: var(--purple-dark); font-size: 12px; font-weight: 600; }
-.kyc-chevron { font-size: 16px; }
+.kyc-details-toggle { display: inline-flex; justify-self: end; justify-content: flex-end; align-items: center; gap: 6px; min-height: 28px; white-space: nowrap; color: var(--purple-dark); font-size: 12px; font-weight: 600; line-height: 1; }
+.kyc-chevron { flex: 0 0 auto; transition: transform 160ms ease; }
 .kyc-hide, .kyc-mobile-label { display: none; }
 .kyc-record[open] .kyc-hide { display: inline; }
 .kyc-record[open] .kyc-show { display: none; }
@@ -61,9 +49,6 @@
 .kyc-pagination { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--border); padding: 16px 24px; font-size: 12px; color: #686572; }
 .kyc-pagination > div { display: flex; gap: 8px; }
 @media (max-width: 760px) {
-  .kyc-review { padding: 24px 16px 48px; }
-  .kyc-heading { margin: 28px 0 24px; }
-  .kyc-heading h1 { font-size: 26px; }
   .kyc-list-toolbar { padding: 16px; }
   .kyc-list > .kyc-columns { display: none; }
   .kyc-columns { grid-template-columns: 1fr 1fr; padding: 20px 16px; gap: 16px; }

@@ -1,6 +1,10 @@
 import { requireAdmin } from "@/lib/auth";
 import { apiError, getDb, PublicError } from "@/lib/db";
-import { previewCsp } from "@/lib/project-preview";
+import {
+  previewBuildAssetSlot,
+  previewCsp,
+  servePreviewBuildAsset,
+} from "@/lib/project-preview";
 import { renderPreviewContent } from "@/lib/preview-document";
 
 export const runtime = "nodejs";
@@ -37,6 +41,9 @@ export async function GET(
     if (!projectId || projectId.length > 200)
       throw new PublicError("Project not found.", 404);
     const path = safePath(filePath);
+    const buildAssetSlot = previewBuildAssetSlot(path);
+    if (buildAssetSlot)
+      return servePreviewBuildAsset(projectId, buildAssetSlot, request);
     const db = getDb();
     const rows = await db<{ path: string; content: string }[]>`
       SELECT f.path,f.content FROM ai_project_files f

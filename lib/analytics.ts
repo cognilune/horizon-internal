@@ -17,6 +17,7 @@ export async function overview(query: Query, f: Filters) {
    (SELECT COUNT(*)::int FROM scoped_workspace_history WHERE created_at >= $2 AND created_at < $3) new_workspaces,
    (SELECT COUNT(DISTINCT user_id)::int FROM scoped_wallets WHERE source='workspace') workspace_owners,
    (SELECT COUNT(*)::int FROM scoped_projects WHERE deleted_at IS NULL) projects,
+   (SELECT COUNT(*)::int FROM scoped_projects WHERE project_status='published') published_websites,
    (SELECT COUNT(*)::int FROM scoped_projects) projects_created,
    (SELECT COUNT(*)::int FROM scoped_projects WHERE created_at >= $2 AND created_at < $3) new_projects,
    (SELECT COUNT(*)::int FROM scoped_invites) invitations,

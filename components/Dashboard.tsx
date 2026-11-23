@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, Logo } from "./Icon";
 import {
   Metric,
@@ -74,6 +74,12 @@ const navigation = [
     id: "database",
     label: "Database",
     description: "Review database usage and manage project access.",
+  },
+  {
+    id: "kyc",
+    label: "KYC Management",
+    description:
+      "Review KYC, business and payout details submitted through Cognilune Payment Gateway.",
   },
   {
     id: "settings",
@@ -377,9 +383,11 @@ function ChartIntervalPicker({
 export default function Dashboard({
   section,
   admin,
+  children,
 }: {
   section: string;
   admin: { name: string; email: string };
+  children?: ReactNode;
 }) {
   const router = useRouter(),
     searchParams = useSearchParams(),
@@ -498,7 +506,7 @@ export default function Dashboard({
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
   }, [profile]);
   useEffect(() => {
-    if (section === "database") return;
+    if (["database", "kyc"].includes(section)) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -684,7 +692,6 @@ export default function Dashboard({
               {section === n.id && <i />}
             </Link>
           ))}
-            <Link href="/kyc"><Icon name="payments"/><span>KYC Management</span></Link>
           </nav>
           <div className="sidebar-bottom">
           <span className="nav-label">PREFERENCES</span>
@@ -863,7 +870,7 @@ export default function Dashboard({
                   <Icon name="internal-users" size={18} /> Add user
                 </button>
               )}
-              {!["settings", "internal-users", "database"].includes(section) && (
+              {!["settings", "internal-users", "database", "kyc"].includes(section) && (
                 <>
                   <button
                     className={`button icon-only ${loading ? "refreshing" : ""}`}
@@ -1037,7 +1044,7 @@ export default function Dashboard({
               </button>
             </div>
           )}
-          {section === "database" ? <DatabaseManagement refresh={refresh} /> : loading && !data ? (
+          {children ? children : section === "database" ? <DatabaseManagement refresh={refresh} /> : loading && !data ? (
             <div
               className={`dashboard-skeleton dashboard-skeleton-${section}`}
               role="status"
@@ -1574,10 +1581,10 @@ export default function Dashboard({
                         note: periodNote,
                       },
                       {
-                        label: "Recorded operations",
-                        key: "operations",
-                        icon: "analytics",
-                        note: "Usage ledger and committed reservations",
+                        label: "Total published websites",
+                        key: "published_websites",
+                        icon: "globe",
+                        note: "Currently published projects",
                       },
                     ])}
                     <div className="charts-grid">
